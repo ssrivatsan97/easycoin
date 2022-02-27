@@ -1,19 +1,19 @@
 import * as net from 'net'
 import {Socket} from 'net'
-// import * as $ from 'jquery'
 import * as fs from 'fs'
 import {BiMap} from 'bimap'
 import * as Message from './message'
 import {Peer} from './peer'
+const canonicalize = require('canonicalize')
 
 const config = {
 	"port" : 18018,
 	"serverTimeoutDuration" : 300000,
 	"socketTimeoutDuration" : 60000,
-	"myName" : "EasyCoin",
+	"myName" : "EasyCoin", // to be changed
 	"bootstrapName" : "Bootstrap",
-	"bootstrapAddress" : "localhost",
-	"bootstrapPort" : 18020,
+	"bootstrapAddress" : "149.28.220.241",
+	"bootstrapPort" : 18018,
 	"hardcodedPeerList" : ["localhost:18020"]
 }
 
@@ -36,6 +36,8 @@ export function connectAsServer(bootstrapMode=false){
 		console.log("Local port " + socket.localPort + ", local address " + socket.localAddress);
 		console.log("Client: " + socket.remoteFamily + "address " + socket.remoteAddress + ", port " + socket.remotePort);
 		const thisPeer = new Peer("no name", socket);
+		discoveredNewPeer(socket.localAddress + ":" + socket.localPort.toString());
+		const msgHandler = new Message.messageHandler(thisPeer);
 
 		server.getConnections( (error,count) => {
 			console.log("Number of open connections = " + count);
@@ -56,7 +58,7 @@ export function connectAsServer(bootstrapMode=false){
 
 		socket.on('data', data => {
 			try{
-				Message.handleMessage(data.toString(),thisPeer);
+				msgHandler.handle(data.toString());
 			} catch(e){
 				// console.log("Invalid message from "+thisPeer.name+" at "+thisPeer.socket.remoteAddress);
 				console.log(e);
@@ -81,10 +83,11 @@ export async function connectAsClient(){
 	const bootstrapPort = config['bootstrapPort'];
 	const bootstrapAddress = config['bootstrapAddress'];
 
-	// Choose peers to connect to
+	// TODO: Choose peers to connect to, try others if one fails
 	
 	const client = new net.Socket();
 	const bootstrapPeer = new Peer("no name", client);
+	const msgHandler = new Message.messageHandler(bootstrapPeer);
 
 	client.connect({port:bootstrapPort, host:bootstrapAddress}, () => {
 		console.log("Successfully connected to peer at "+bootstrapAddress+" port "+bootstrapPort);
@@ -98,7 +101,7 @@ export async function connectAsClient(){
 
 	client.on('data', data => {
 			try{
-				Message.handleMessage(data.toString(),bootstrapPeer);
+				msgHandler.handle(data.toString());
 			} catch(e){
 				// console.log("Invalid message from "+bootstrapPeer.name+" at "+bootstrapPeer.socket.remoteAddress);
 				console.log(e);
@@ -132,7 +135,7 @@ export function discoveredNewPeer(peerAddress: string){
 	var discoveredPeerList = readDiscoveredPeers();
 	if(!discoveredPeerList.includes(peerAddress))
 		discoveredPeerList.push(peerAddress);
-	fs.writeFileSync('./discoveredPeerList.json',JSON.stringify(discoveredPeerList),{encoding:'utf-8'});
+	fs.writeFileSync('./discoveredPeerList.json',canonicalize(discoveredPeerList),{encoding:'utf-8'});
 }
 
 export function sendDiscoveredPeers(peer: Peer){
@@ -150,6 +153,11 @@ export function readDiscoveredPeers(){
 	}
 	// discoveredPeerList = ["localhost:18018","localhost:18020","dionyziz.com:18018","138.197.191.170:18018","[fe80::f03c:91ff:fe2c:5a79]:18018"];
 	return discoveredPeerList;
+}
+
+export function closeDueToError(peer:Peer, error:string){
+	console.log(error);
+	peer.socket.destroy();
 }
 
 // TODO: Figure out @types/net package
