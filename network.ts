@@ -4,6 +4,7 @@ import * as fs from 'fs'
 import {BiMap} from 'bimap'
 import * as Message from './message'
 import {Peer} from './peer'
+import level from 'level-ts'
 const canonicalize = require('canonicalize')
 
 const config = {
@@ -14,8 +15,12 @@ const config = {
 	"bootstrapName" : "Bootstrap",
 	"bootstrapAddress" : "149.28.220.241",
 	"bootstrapPort" : 18018,
-	"hardcodedPeerList" : ["localhost:18020"]
+	"hardcodedPeerList" : ["localhost:18020", "149.28.220.241:18018"]
 }
+
+const peerDB = new level('./discoveredPeerList');
+
+var connectedPeerList: Peer[];
 
 export function connectAsServer(bootstrapMode=false){
 	var myName;
@@ -36,7 +41,8 @@ export function connectAsServer(bootstrapMode=false){
 		console.log("Local port " + socket.localPort + ", local address " + socket.localAddress);
 		console.log("Client: " + socket.remoteFamily + "address " + socket.remoteAddress + ", port " + socket.remotePort);
 		const thisPeer = new Peer("no name", socket);
-		discoveredNewPeer(socket.localAddress + ":" + socket.localPort.toString());
+		connectedPeerList.push(thisPeer);
+		discoveredNewPeers([socket.localAddress + ":" + socket.localPort.toString()]);
 		const msgHandler = new Message.messageHandler(thisPeer);
 
 		server.getConnections( (error,count) => {
@@ -87,6 +93,7 @@ export async function connectAsClient(){
 	
 	const client = new net.Socket();
 	const bootstrapPeer = new Peer("no name", client);
+	connectedPeerList.push(bootstrapPeer);
 	const msgHandler = new Message.messageHandler(bootstrapPeer);
 
 	client.connect({port:bootstrapPort, host:bootstrapAddress}, () => {
@@ -123,6 +130,12 @@ export function sendMessage(data:string, peer:Peer){
 	console.log("Sent: "+data)
 }
 
+export function broadcastMessage(data:string){
+	connectedPeerList.forEach((peer,index) => {
+		sendMessage(data,peer);
+	});
+}
+
 export function sayHello(peer:Peer, myName:string){
 	sendMessage(Message.encodeMessage({type:'hello',version:'0.7.0',agent:myName}), peer);
 }
@@ -131,26 +144,35 @@ export function askForPeers(peer:Peer){
 	sendMessage(Message.encodeMessage({type:'getpeers'}), peer);
 }
 
-export function discoveredNewPeer(peerAddress: string){
-	var discoveredPeerList = readDiscoveredPeers();
-	if(!discoveredPeerList.includes(peerAddress))
-		discoveredPeerList.push(peerAddress);
-	fs.writeFileSync('./discoveredPeerList.json',canonicalize(discoveredPeerList),{encoding:'utf-8'});
+export async function discoveredNewPeers(peerset: string[]){
+	var discoveredPeerList = await peerDB.get('discoveredPeerList');//readDiscoveredPeers();
+	peerset.forEach((item,index) => {
+		if(!discoveredPeerList.includes(item))
+			discoveredPeerList.push(item);
+	});
+	// fs.writeFileSync('./discoveredPeerList.json',canonicalize(discoveredPeerList),{encoding:'utf-8'});
+	await peerDB.put('discoveredPeerList', discoveredPeerList);
 }
 
-export function sendDiscoveredPeers(peer: Peer){
-	var msgObject = {type:"peers", peers:readDiscoveredPeers()};
+export async function sendDiscoveredPeers(peer: Peer){
+	var discoveredPeerList = await peerDB.get('discoveredPeerList')
+	var msgObject = {type:"peers", peers:discoveredPeerList};
 	sendMessage(Message.encodeMessage(msgObject), peer);
 }
 
-export function readDiscoveredPeers(){
+export async function readDiscoveredPeers(){
 	var discoveredPeerList;
-	var readText = fs.readFileSync("./discoveredPeerList.json").toString('utf-8');
-	try{
-		discoveredPeerList = JSON.parse(readText);
-	} catch(e){
-		console.log("Invalid stored peer list: "+readText);
-	}
+	// var readText = fs.readFileSync("./discoveredPeerList.json").toString('utf-8');
+	// try{
+	// 	discoveredPeerList = JSON.parse(readText);
+	// } catch(e){
+	// 	console.log("Invalid stored peer list: "+readText);
+	// }
+	var myPromise = await peerDB.get('discoveredPeerList');
+	myPromise.then(
+		function(value){ discoveredPeerList = value;},
+		function(error){console.log(error);}
+	)
 	// discoveredPeerList = ["localhost:18018","localhost:18020","dionyziz.com:18018","138.197.191.170:18018","[fe80::f03c:91ff:fe2c:5a79]:18018"];
 	return discoveredPeerList;
 }
