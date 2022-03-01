@@ -20,7 +20,7 @@ const config = {
 
 const peerDB = new level('./discoveredPeerList');
 
-var connectedPeerList: Peer[];
+var connectedPeerList: Peer[] = [];
 
 export function connectAsServer(bootstrapMode=false){
 	var myName;
