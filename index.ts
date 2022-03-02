@@ -1,4 +1,4 @@
-import * as network from './network'
+import * as network from './network';
 
 network.connectAsClient();
 network.connectAsServer();

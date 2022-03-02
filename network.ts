@@ -145,37 +145,25 @@ export function askForPeers(peer:Peer){
 }
 
 export async function discoveredNewPeers(peerset: string[]){
-	var discoveredPeerList = await peerDB.get('discoveredPeerList');//readDiscoveredPeers();
+	var discoveredPeerList = await peerDB.get('discoveredPeerList');
 	peerset.forEach((item,index) => {
 		if(!discoveredPeerList.includes(item))
 			discoveredPeerList.push(item);
 	});
-	// fs.writeFileSync('./discoveredPeerList.json',canonicalize(discoveredPeerList),{encoding:'utf-8'});
 	await peerDB.put('discoveredPeerList', discoveredPeerList);
 }
 
 export async function sendDiscoveredPeers(peer: Peer){
-	var discoveredPeerList = await peerDB.get('discoveredPeerList')
+	var discoveredPeerList = await peerDB.get('discoveredPeerList');
 	var msgObject = {type:"peers", peers:discoveredPeerList};
 	sendMessage(Message.encodeMessage(msgObject), peer);
 }
 
 export async function readDiscoveredPeers(){
-	var discoveredPeerList;
-	// var readText = fs.readFileSync("./discoveredPeerList.json").toString('utf-8');
-	// try{
-	// 	discoveredPeerList = JSON.parse(readText);
-	// } catch(e){
-	// 	console.log("Invalid stored peer list: "+readText);
-	// }
-	var myPromise = await peerDB.get('discoveredPeerList');
-	myPromise.then(
-		function(value){ discoveredPeerList = value;},
-		function(error){console.log(error);}
-	)
-	// discoveredPeerList = ["localhost:18018","localhost:18020","dionyziz.com:18018","138.197.191.170:18018","[fe80::f03c:91ff:fe2c:5a79]:18018"];
+	var discoveredPeerList = await peerDB.get('discoveredPeerList');
 	return discoveredPeerList;
 }
+// discoveredPeerList = ["localhost:18018","localhost:18020","dionyziz.com:18018","138.197.191.170:18018","[fe80::f03c:91ff:fe2c:5a79]:18018"];
 
 export function closeDueToError(peer:Peer, error:string){
 	console.log(error);

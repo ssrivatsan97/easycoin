@@ -5,26 +5,28 @@ const canonicalize = require('canonicalize')
 
 const invalidMsgTimeout = 5000;
 
-const HelloObject = Record({
+const HelloMessage = Record({
 	type: Literal('hello'),
 	version: Template(Literal('0.7.'), Number),
 	agent: String
 });
 
-const PeersObject = Record({
+const PeersMessage = Record({
 	type: Literal('peers'),
 	peers: Array(String)
 });
 
-const GetPeersObject = Record({
+const GetPeersMessage = Record({
 	type: Literal('getpeers')
 });
 
-// const WhiteSpaceObject = Record({
-// 	type: Literal(' ')
-// });
+const ErrorMessage = Record({
+	type: Literal('error'),
+	error: String
+});
 
-const MessageObject = Union(HelloObject, PeersObject, GetPeersObject);
+
+const MessageObject = Union(HelloMessage, PeersMessage, GetPeersMessage, ErrorMessage);
 
 export function parseMessage(msg: string){
 	try{
@@ -38,9 +40,6 @@ export function parseMessage(msg: string){
 export function encodeMessage(obj: any){
 	return canonicalize(obj) + "\n";
 }
-
-// export type HelloObject = Static<typeof HelloObject>;
-// export type MessageObject = Static<typeof MessageObject>;
 
 export class messageHandler{
 	peer:Peer;
@@ -88,18 +87,22 @@ export class messageHandler{
 				case 'peers':
 					console.log("Peer "+this.peer.name+" sent some peer addresses.");
 					var peerset = msgObject.peers;
-					peerset.forEach((item,index) => {
-						network.discoveredNewPeer(item);
-					});
+					network.discoveredNewPeers(peerset);
 					break;
 
 				case 'getpeers':
 					console.log("Peer "+this.peer.name+" asked for peer addresses.");
 					network.sendDiscoveredPeers(this.peer);
 					break;
+
+				case 'error':
+					console.log("Error reported by "+this.peer.name);
+					console.log(msgObject.error);
+					break;
 			}
 		});
 	}
 }
 
-// {"type":"peers","peers":["dionyziz.com:18018","138.197.191.170:18018","[fe80::f03c:91ff:fe2c:5a79]:18018"]}
+// export type HelloMessage = Static<typeof HelloMessage>;
+// export type MessageObject = Static<typeof MessageObject>;
