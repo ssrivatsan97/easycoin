@@ -145,7 +145,7 @@ export function askForPeers(peer:Peer){
 }
 
 export async function discoveredNewPeers(peerset: string[]){
-	var discoveredPeerList = await peerDB.get('discoveredPeerList');
+	var discoveredPeerList = await readDiscoveredPeers();
 	peerset.forEach((item,index) => {
 		if(!discoveredPeerList.includes(item))
 			discoveredPeerList.push(item);
@@ -154,13 +154,19 @@ export async function discoveredNewPeers(peerset: string[]){
 }
 
 export async function sendDiscoveredPeers(peer: Peer){
-	var discoveredPeerList = await peerDB.get('discoveredPeerList');
+	var discoveredPeerList = await readDiscoveredPeers();
 	var msgObject = {type:"peers", peers:discoveredPeerList};
 	sendMessage(Message.encodeMessage(msgObject), peer);
 }
 
 export async function readDiscoveredPeers(){
-	var discoveredPeerList = await peerDB.get('discoveredPeerList');
+	var discoveredPeerList: string[];
+	try{
+		discoveredPeerList = await peerDB.get('discoveredPeerList');
+	} catch(error: any){
+		await peerDB.put('discoveredPeerList',[]);
+		discoveredPeerList = [];
+	}
 	return discoveredPeerList;
 }
 // discoveredPeerList = ["localhost:18018","localhost:18020","dionyziz.com:18018","138.197.191.170:18018","[fe80::f03c:91ff:fe2c:5a79]:18018"];
