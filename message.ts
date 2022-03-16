@@ -1,6 +1,7 @@
 import { Boolean, Number, String, Literal, Array, Tuple, Record, Union, Static, Template } from 'runtypes';
 import {Peer} from './peer'
 import * as network from './network'
+import {Object,receiveObject,sendObject,advertizeObject,requestObject} from './objects' // added in HW 2
 const canonicalize = require('canonicalize')
 
 const invalidMsgTimeout = 5000;
@@ -25,8 +26,23 @@ const ErrorMessage = Record({
 	error: String
 });
 
+// next three objects added in HW 2
+const GetObjectMessage = Record({
+	type: Literal('getobject'),
+	objectid: String
+});
 
-const MessageObject = Union(HelloMessage, PeersMessage, GetPeersMessage, ErrorMessage);
+const IHaveObjectMessage = Record({
+	type: Literal('ihaveobject'),
+	objectid: String
+});
+
+const ObjectMessage = Record({
+	type: Literal('object'),
+	object: Object
+})
+
+const MessageObject = Union(HelloMessage, PeersMessage, GetPeersMessage, ErrorMessage, GetObjectMessage, IHaveObjectMessage, ObjectMessage); // changed in HW 2
 
 export function parseMessage(msg: string){
 	try{
@@ -97,6 +113,24 @@ export class messageHandler{
 				case 'error':
 					console.log("Error reported by "+this.peer.name);
 					console.log(msgObject.error);
+					break;
+
+				// next 3 cases added in HW 2
+				case 'ihaveobject':
+					console.log("Peer "+this.peer.name+" advertized object "+msgObject.objectid);
+					// Shouldn't blindly request for content. One needs to have download priority rules :)
+					requestObject(msgObject.objectid,this.peer);
+					break;
+
+				case 'getobject':
+					console.log("Peer "+this.peer.name+" asked for object "+msgObject.objectid);
+						sendObject(msgObject.objectid, this.peer).catch((error)=>{console.log(error);});
+					break;
+
+				case 'object':
+					console.log("Peer "+this.peer.name+" sent object");
+					console.log(msgObject.object);
+					receiveObject(msgObject.object);
 					break;
 			}
 		});
