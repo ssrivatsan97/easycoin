@@ -7,7 +7,6 @@ import level from 'level-ts'
 import {nullSignatures} from './utils'
 import {GeneralTxObject, CoinbaseObject, TxObject, getObject} from './objects'
 const canonicalize = require('canonicalize')
-import sha256 from 'fast-sha256'
 import * as ed from '@noble/ed25519'
 
 export async function validateTx(tx: any){
@@ -23,7 +22,7 @@ export async function validateTx(tx: any){
 			try{
 				opoint = await getObject(input.outpoint.txid)
 			} catch(error){
-				throw "Invalid transaction: Outpoint "+i+" not found";
+				throw "Invalid transaction: Outpoint "+i+" not found in database";
 			}
 			// Check that outpoint's txid indeed points to a transaction.
 			// Later, also check that it is a transaction in the past chain!
@@ -46,7 +45,11 @@ export async function validateTx(tx: any){
 		if (sumInputValues <= sumOutputValues)
 			throw "Invalid transaction: Output value > sum of input values"
 	} else if(CoinbaseObject.guard(tx)){
-		// TODO: Insert logic here
+		// TODO: Insert any additional logic here
+		for(let i=0; i<tx.outputs.length; i++){
+			if (! /[0-9a-f]{64}/.test(tx.outputs[i].pubkey))
+				throw "Invalid transaction: Output "+i+" has invalid public key";
+		}
 	}else {
 		throw "Invalid transaction: Doesn't match transaction type"
 	}

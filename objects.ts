@@ -4,9 +4,9 @@ import * as network from './network'
 import * as message from './message'
 import {Peer} from './peer'
 import {validateTx} from './transactions'
+import {objectToId} from './utils'
 import level from 'level-ts'
 const canonicalize = require('canonicalize')
-import sha256 from 'fast-sha256'
 
 const Outpoint = Record({
 	txid: String,
@@ -87,7 +87,7 @@ export async function receiveObject(object:any){
 		}
 	} else
 		objectIsValid = true; // For now. This will change when we can validate other object types.
-	const objectid = Buffer.from(sha256(canonicalize(object))).toString('hex');
+	const objectid = objectToId(object);
 	if(objectIsValid){
 		if (!(await objectDB.exists(objectid)))
 			await objectDB.put(objectid, canonicalize(object));
