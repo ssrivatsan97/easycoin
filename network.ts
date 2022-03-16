@@ -121,7 +121,7 @@ export async function connectAsClient(){
 					try{
 						msgHandler.handle(data.toString());
 					} catch(e){
-						console.log("Invalid message from "+bootstrapPeer.name+" at "+bootstrapPeer.socket.remoteAddress);
+						console.log("Invalid message from "+peer.name+" at "+peer.socket.remoteAddress);
 						console.log(e);
 						client.destroy();
 					}
