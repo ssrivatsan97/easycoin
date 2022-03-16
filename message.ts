@@ -30,11 +30,10 @@ const MessageObject = Union(HelloMessage, PeersMessage, GetPeersMessage, ErrorMe
 
 export function parseMessage(msg: string){
 	try{
-		var obj = JSON.parse(msg);
+		return MessageObject.check(JSON.parse(msg));
 	} catch(e){
 		throw e;
 	}
-	return MessageObject.check(obj);
 }
 
 export function encodeMessage(obj: any){
@@ -54,13 +53,14 @@ export class messageHandler{
 	}
 
 	handle(data:string){
-		var msgList = data.split('\n');
+		const msgList = data.split('\n');
 		msgList.forEach((msgItem,msgIndex) => {
 			if(msgItem==='' || msgItem===' ')
 				return;
 			msgItem = this.jsonBuffer + msgItem
+			let msgObject;
 			try{
-				var msgObject = parseMessage(msgItem);
+				msgObject = parseMessage(msgItem);
 			} catch(e){
 				this.jsonBuffer = msgItem;
 				if(!this.waiting){
@@ -86,8 +86,7 @@ export class messageHandler{
 
 				case 'peers':
 					console.log("Peer "+this.peer.name+" sent some peer addresses.");
-					var peerset = msgObject.peers;
-					network.discoveredNewPeers(peerset);
+					network.discoveredNewPeers(msgObject.peers);
 					break;
 
 				case 'getpeers':

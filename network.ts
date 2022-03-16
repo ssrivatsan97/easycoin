@@ -1,17 +1,17 @@
 import * as net from 'net'
 import {Socket} from 'net'
 import * as fs from 'fs'
-import {BiMap} from 'bimap'
 import * as Message from './message'
 import {Peer} from './peer'
 import level from 'level-ts'
+import {parseIpPort} from './utils'
 const canonicalize = require('canonicalize')
 
 const config = {
 	"port" : 18018,
 	"serverTimeoutDuration" : 300000,
 	"socketTimeoutDuration" : 60000,
-	"myName" : "EasyCoin", // to be changed
+	"myName" : "EasyCoin",
 	"bootstrapName" : "Bootstrap",
 	"bootstrapAddress" : "149.28.220.241",
 	"bootstrapPort" : 18018,
@@ -20,11 +20,11 @@ const config = {
 
 const peerDB = new level('./discoveredPeerList');
 
-var connectedPeerList: Peer[] = [];
+const connectedPeerList: Peer[] = [];
 
 export function connectAsServer(bootstrapMode=false){
-	var myName;
-	var port;
+	let myName;
+	let port;
 	if(bootstrapMode){
 		myName = config['bootstrapName'];
 		port = config['bootstrapPort'];
@@ -66,7 +66,6 @@ export function connectAsServer(bootstrapMode=false){
 			try{
 				msgHandler.handle(data.toString());
 			} catch(e){
-				// console.log("Invalid message from "+thisPeer.name+" at "+thisPeer.socket.remoteAddress);
 				console.log(e);
 				socket.destroy();
 			}
@@ -89,42 +88,56 @@ export async function connectAsClient(){
 	const bootstrapPort = config['bootstrapPort'];
 	const bootstrapAddress = config['bootstrapAddress'];
 
-	// TODO: Choose peers to connect to, try others if one fails
+	// Try to connect to all known peers in my database
 	
-	const client = new net.Socket();
-	const bootstrapPeer = new Peer("no name", client);
-	connectedPeerList.push(bootstrapPeer);
-	const msgHandler = new Message.messageHandler(bootstrapPeer);
+	await discoveredNewPeers([bootstrapAddress+":"+bootstrapPort])
+	const discoveredPeerList = await readDiscoveredPeers()
+	for(let i=0; i<discoveredPeerList.length; i++)
+	{
+		const peerAddress = discoveredPeerList[i]
+		const client = new net.Socket();
+		const peer = new Peer("no name", client);
+		connectedPeerList.push(peer);
+		const msgHandler = new Message.messageHandler(peer);
 
-	client.connect({port:bootstrapPort, host:bootstrapAddress}, () => {
-		console.log("Successfully connected to peer at "+bootstrapAddress+" port "+bootstrapPort);
-		sayHello(bootstrapPeer,myName);
-		askForPeers(bootstrapPeer);
-	});
+		let address, port
+		try{
+			[address, port] = parseIpPort(peerAddress)
+		} catch(error){
+			console.log("Peer address " + peerAddress + " is invalid: " + error)
+		}
+		if(address!==undefined && port!==undefined){
+			client.connect({port:port, host:address}, () => {
+				console.log("Successfully connected to peer at "+address+" port "+port);
+				sayHello(peer,myName);
+				askForPeers(peer);
+			});
 
-	client.on('error', (error) => {
-		console.log('Error: ' + error);
-	});
+			client.on('error', (error) => {
+				console.log('Error: ' + error);
+			});
 
-	client.on('data', data => {
-			try{
-				msgHandler.handle(data.toString());
-			} catch(e){
-				// console.log("Invalid message from "+bootstrapPeer.name+" at "+bootstrapPeer.socket.remoteAddress);
-				console.log(e);
-				client.destroy();
-			}
-		});
+			client.on('data', data => {
+					try{
+						msgHandler.handle(data.toString());
+					} catch(e){
+						console.log("Invalid message from "+bootstrapPeer.name+" at "+bootstrapPeer.socket.remoteAddress);
+						console.log(e);
+						client.destroy();
+					}
+				});
 
 
-	client.on('end', () => {
-		console.log(client.remoteAddress+" port "+client.remotePort+" closed their connection.");
-		// Need to connect to someone else!
-	});
+			client.on('end', () => {
+				console.log(client.remoteAddress+" port "+client.remotePort+" closed their connection.");
+				// Need to connect to someone else!
+			});
+		}
+	}
 }
 
 export function sendMessage(data:string, peer:Peer){
-	var socket = peer.socket
+	const socket = peer.socket
 	if(socket !== undefined)
 		socket.write(data);
 	console.log("Sent: "+data)
@@ -145,7 +158,7 @@ export function askForPeers(peer:Peer){
 }
 
 export async function discoveredNewPeers(peerset: string[]){
-	var discoveredPeerList = await readDiscoveredPeers();
+	const discoveredPeerList = await readDiscoveredPeers();
 	peerset.forEach((item,index) => {
 		if(!discoveredPeerList.includes(item))
 			discoveredPeerList.push(item);
@@ -154,22 +167,19 @@ export async function discoveredNewPeers(peerset: string[]){
 }
 
 export async function sendDiscoveredPeers(peer: Peer){
-	var discoveredPeerList = await readDiscoveredPeers();
-	var msgObject = {type:"peers", peers:discoveredPeerList};
+	const discoveredPeerList = await readDiscoveredPeers();
+	const msgObject = {type:"peers", peers:discoveredPeerList};
 	sendMessage(Message.encodeMessage(msgObject), peer);
 }
 
 export async function readDiscoveredPeers(){
-	var discoveredPeerList: string[];
-	try{
-		discoveredPeerList = await peerDB.get('discoveredPeerList');
-	} catch(error: any){
+	if(await peerDB.exists('discoveredPeerList'))
+		return await peerDB.get('discoveredPeerList');
+	else {
 		await peerDB.put('discoveredPeerList',[]);
-		discoveredPeerList = [];
+		return [];
 	}
-	return discoveredPeerList;
 }
-// discoveredPeerList = ["localhost:18018","localhost:18020","dionyziz.com:18018","138.197.191.170:18018","[fe80::f03c:91ff:fe2c:5a79]:18018"];
 
 export function closeDueToError(peer:Peer, error:string){
 	console.log(error);
@@ -177,4 +187,4 @@ export function closeDueToError(peer:Peer, error:string){
 }
 
 // TODO: Figure out @types/net package
-// noImplicitAny has been set to false to handle unkown type function arguments. What to do?
+// Currently, noImplicitAny has been set to false to handle unkown type function arguments
