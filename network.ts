@@ -42,7 +42,7 @@ export function connectAsServer(bootstrapMode=false){
 		console.log("Client: " + socket.remoteFamily + "address " + socket.remoteAddress + ", port " + socket.remotePort);
 		const thisPeer = new Peer("no name", socket);
 		connectedPeerList.push(thisPeer);
-		discoveredNewPeers([socket.localAddress + ":" + socket.localPort.toString()]);
+		discoveredNewPeers([socket.localAddress + ":" + socket.localPort]);
 		const msgHandler = new Message.messageHandler(thisPeer);
 
 		server.getConnections( (error,count) => {
@@ -78,7 +78,7 @@ export function connectAsServer(bootstrapMode=false){
 
 	server.listen(port, () => {
 		const ser_addr = server.address();
-		console.log("Server: " + ser_addr.family + " address " + ser_addr.address + ", port " + ser_addr.port);
+		console.log("Server: " + ser_addr);
 		console.log("Listening for connections");
 	});
 }
@@ -121,7 +121,7 @@ export async function connectAsClient(){
 					try{
 						msgHandler.handle(data.toString());
 					} catch(e){
-						console.log("Invalid message from "+bootstrapPeer.name+" at "+bootstrapPeer.socket.remoteAddress);
+						console.log("Invalid message from "+peer.name+" at "+peer.socket.remoteAddress);
 						console.log(e);
 						client.destroy();
 					}
