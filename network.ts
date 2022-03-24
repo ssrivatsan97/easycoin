@@ -96,9 +96,8 @@ export async function connectAsClient(){
 	{
 		const peerAddress = discoveredPeerList[i]
 		const client = new net.Socket();
-		const peer = new Peer("no name", client);
-		connectedPeerList.push(peer);
-		const msgHandler = new Message.messageHandler(peer);
+		let peer;
+		let msgHandler;
 
 		let address, port
 		try{
@@ -109,6 +108,9 @@ export async function connectAsClient(){
 		if(address!==undefined && port!==undefined){
 			client.connect({port:port, host:address}, () => {
 				console.log("Successfully connected to peer at "+address+" port "+port);
+				peer = new Peer("no name", client);
+				connectedPeerList.push(peer);
+				msgHandler = new Message.messageHandler(peer)
 				sayHello(peer,myName);
 				askForPeers(peer);
 			});
@@ -140,7 +142,7 @@ export function sendMessage(data:string, peer:Peer){
 	const socket = peer.socket
 	if(socket !== undefined)
 		socket.write(data);
-	console.log("Sent: "+data)
+	console.log("Sent: "+data+" to "+socket.remoteAddress+":"+socket.remotePort)
 }
 
 export function broadcastMessage(data:string){
