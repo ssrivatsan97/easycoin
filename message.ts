@@ -3,7 +3,7 @@ import {Peer} from './peer'
 import * as network from './network'
 const canonicalize = require('canonicalize')
 
-const invalidMsgTimeout = 5000;
+const invalidMsgTimeout = 1000;
 
 const HelloMessage = Record({
 	type: Literal('hello'),
@@ -32,7 +32,7 @@ export function parseMessage(msg: string){
 	try{
 		return MessageObject.check(JSON.parse(msg));
 	} catch(e){
-		throw e;
+		throw e.toString();
 	}
 }
 
