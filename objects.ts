@@ -21,7 +21,7 @@ export const GeneralTxObject = Record({
 
 export const CoinbaseObject = Record({
 	type: Literal("transaction"),
-	// height: Number, // seems like this is an optional field (?)
+	height: Number,
 	outputs: Array(Record({pubkey:String,value:Number}))
 });
 
@@ -59,40 +59,51 @@ export async function getObject(objectid: string){
 	}
 }
 
-export function requestObject(objectid: string, peer:Peer){
+function requestObject(objectid: string, peer:Peer){
 	const getObjectMessage = message.encodeMessage({type:"getobject",objectid:objectid});
 	network.sendMessage(getObjectMessage,peer);
 }
 
-export function requestAllObject(objectid: string){
-	const getObjectMessage = message.encodeMessage({type:"getobject",objectid:objectid});
-	network.broadcastMessage(getObjectMessage);
+export async function requestObjectIfNotPresent(objectid: string, peer:Peer){
+	if (!(await objectDB.exists(objectid))){
+		requestObject(objectid,peer)
+	}
+	else
+		console.log("Object already exists")
 }
 
-export function advertizeObject(objectid:string){
+// export function requestAllObject(objectid: string){
+// 	const getObjectMessage = message.encodeMessage({type:"getobject",objectid:objectid});
+// 	network.broadcastMessage(getObjectMessage);
+// }
+
+export function advertizeObject(objectid:string, sender:Peer){
 	const iHaveObjectMessage = message.encodeMessage({type:"ihaveobject",objectid:objectid});
-	network.broadcastMessage(iHaveObjectMessage);
+	network.broadcastMessageExceptSender(iHaveObjectMessage,sender);
+	// network.broadcastMessage(iHaveObjectMessage)
 }
 
-export async function receiveObject(object:any){
-	let objectIsValid = false;
-	if (TxObject.guard(object)){
-		console.log("Validating transaction...")
-		try{
-			await validateTx(object)
-			objectIsValid=true
-			console.log("Transaction is valid")
-		} catch(error){
-			console.log(error);
+export async function receiveObject(object:any, sender:Peer){
+	const objectid = objectToId(object);
+	if (!(await objectDB.exists(objectid))){
+		let objectIsValid = false;
+		if (TxObject.guard(object)){
+			console.log("Validating transaction...")
+			try{
+				await validateTx(object)
+				objectIsValid=true
+				console.log("Transaction is valid")
+			} catch(error){
+				console.log(error);
+			}
+		} else
+			objectIsValid = true; // For now. This will change when we can validate other object types.
+		if(objectIsValid){
+			await objectDB.put(objectid, canonicalize(object));
+			advertizeObject(objectid,sender);
 		}
 	} else
-		objectIsValid = true; // For now. This will change when we can validate other object types.
-	const objectid = objectToId(object);
-	if(objectIsValid){
-		if (!(await objectDB.exists(objectid)))
-			await objectDB.put(objectid, canonicalize(object));
-		advertizeObject(objectid);
-	}
+		console.log("Object already exists")
 }
 
 export async function sendObject(objectid:string, peer:Peer){

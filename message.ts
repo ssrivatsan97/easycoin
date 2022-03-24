@@ -1,7 +1,7 @@
 import { Boolean, Number, String, Literal, Array, Tuple, Record, Union, Static, Template } from 'runtypes';
 import {Peer} from './peer'
 import * as network from './network'
-import {Object,receiveObject,sendObject,advertizeObject,requestObject} from './objects' // added in HW 2
+import {Object,receiveObject,sendObject,requestObjectIfNotPresent} from './objects' // added in HW 2
 const canonicalize = require('canonicalize')
 
 const invalidMsgTimeout = 5000;
@@ -118,19 +118,22 @@ export class messageHandler{
 				// next 3 cases added in HW 2
 				case 'ihaveobject':
 					console.log("Peer "+this.peer.name+" advertized object "+msgObject.objectid);
-					// Shouldn't blindly request for content. One needs to have download priority rules :)
-					requestObject(msgObject.objectid,this.peer);
+					requestObjectIfNotPresent(msgObject.objectid,this.peer);
 					break;
 
 				case 'getobject':
 					console.log("Peer "+this.peer.name+" asked for object "+msgObject.objectid);
-						sendObject(msgObject.objectid, this.peer).catch((error)=>{console.log(error);});
+					try{
+						sendObject(msgObject.objectid, this.peer)
+					} catch(error){
+						console.log(error)
+					}
 					break;
 
 				case 'object':
 					console.log("Peer "+this.peer.name+" sent object");
 					console.log(msgObject.object);
-					receiveObject(msgObject.object);
+					receiveObject(msgObject.object,this.peer);
 					break;
 			}
 		});

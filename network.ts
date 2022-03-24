@@ -151,6 +151,13 @@ export function broadcastMessage(data:string){
 	});
 }
 
+export function broadcastMessageExceptSender(data:string, sender:Peer){
+	connectedPeerList.forEach((peer,index) => {
+		if(peer!==sender)
+			sendMessage(data,peer);
+	});
+}
+
 export function sayHello(peer:Peer, myName:string){
 	sendMessage(Message.encodeMessage({type:'hello',version:'0.7.0',agent:myName}), peer);
 }
