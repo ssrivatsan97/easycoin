@@ -1,3 +1,6 @@
+// TODO: Remove from connectedPeerList after disconnection - done
+// TODO: Send error messages
+
 import * as net from 'net'
 import {Socket} from 'net'
 import * as fs from 'fs'
@@ -59,7 +62,10 @@ export function connectAsServer(bootstrapMode=false){
 				console.log("Connection with "+thisPeer.name+" at "+socket.remoteAddress+" port "+socket.remotePort+" closed.");
 			else
 				console.log("Connection with "+thisPeer.name+" at "+socket.remoteAddress+" port "+socket.remotePort+" closed due to error.");
-			socket.destroy();
+			connectedPeerList.forEach((item,index) => {
+				if(item===thisPeer)
+					connectedPeerList.splice(index,1)
+			})
 		});
 
 		socket.on('data', data => {
@@ -67,7 +73,7 @@ export function connectAsServer(bootstrapMode=false){
 				msgHandler.handle(data.toString());
 			} catch(e){
 				console.log(e);
-				socket.destroy();
+				closeDueToError(thisPeer, e)
 			}
 		});
 	});
@@ -120,18 +126,24 @@ export async function connectAsClient(){
 			});
 
 			client.on('data', data => {
-					try{
-						msgHandler.handle(data.toString());
-					} catch(e){
-						console.log("Invalid message from "+peer.name+" at "+peer.socket.remoteAddress);
-						console.log(e);
-						client.destroy();
-					}
-				});
+				try{
+					msgHandler.handle(data.toString());
+				} catch(e){
+					console.log("Invalid message from "+peer.name+" at "+peer.socket.remoteAddress);
+					console.log(e);
+					closeDueToError(peer, e);
+				}
+			});
 
-
-			client.on('end', () => {
-				console.log(client.remoteAddress+" port "+client.remotePort+" closed their connection.");
+			client.on('close', (hadError) => {
+				if(!hadError)
+					console.log("Connection with "+client.remoteAddress+" port "+client.remotePort+" closed.");
+				else
+					console.log("Connection with "+client.remoteAddress+" port "+client.remotePort+" closed due to error.");
+				connectedPeerList.forEach((item,index) => {
+					if(item===peer)
+						connectedPeerList.splice(index,1)
+				})
 				// Need to connect to someone else!
 			});
 		}
@@ -192,7 +204,10 @@ export async function readDiscoveredPeers(){
 
 export function closeDueToError(peer:Peer, error:string){
 	console.log(error);
-	peer.socket.destroy();
+	sendMessage(Message.encodeMessage({type:"error", error:error}), peer)
+	setTimeout(() => {
+		peer.socket.destroy();
+	}, 500)
 }
 
 // TODO: Figure out @types/net package

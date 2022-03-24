@@ -4,7 +4,7 @@ import * as network from './network'
 import {Object,receiveObject,sendObject,requestObjectIfNotPresent} from './objects' // added in HW 2
 const canonicalize = require('canonicalize')
 
-const invalidMsgTimeout = 5000;
+const invalidMsgTimeout = 1000;
 
 const HelloMessage = Record({
 	type: Literal('hello'),
@@ -48,7 +48,7 @@ export function parseMessage(msg: string){
 	try{
 		return MessageObject.check(JSON.parse(msg));
 	} catch(e){
-		throw e;
+		throw e.toString();
 	}
 }
 
