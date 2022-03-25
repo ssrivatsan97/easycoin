@@ -1,6 +1,3 @@
-// TODO: Remove from connectedPeerList after disconnection - done
-// TODO: Send error messages
-
 import * as net from 'net'
 import {Socket} from 'net'
 import * as fs from 'fs'
