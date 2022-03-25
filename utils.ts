@@ -1,6 +1,11 @@
 const canonicalize = require('canonicalize')
 import sha256 from 'fast-sha256'
 
+// This function is added in HW 3
+export function hexToNumber(hex:string){
+	return Number("0x"+hex)
+}
+
 // This function is added in HW 2
 export function nullSignatures(obj:any){
 	// The following replaces all occurrences of the pattern "sig":"<sequence of 128 hex digits>" by the string "sig":null

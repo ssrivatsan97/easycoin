@@ -1,5 +1,4 @@
 // This file is added in HW 2
-import { Boolean, Number, String, Literal, Array, Tuple, Record, Union, Static, Template } from 'runtypes';
 import * as network from './network'
 import * as message from './message'
 import {Peer} from './peer'
@@ -14,7 +13,7 @@ export async function validateTx(tx: any){
 		let sumInputValues = 0;
 		for(let i=0; i<tx.inputs.length; i++){
 			let input = tx.inputs[i];
-			// let opoint: any;
+			let opoint: any;
 			// Check that outpoint's txid is available in database.
 			try{
 				opoint = await getObject(input.outpoint.txid)
@@ -25,8 +24,8 @@ export async function validateTx(tx: any){
 			if (!TxObject.guard(opoint))
 				throw "Invalid transaction: Outpoint "+i+" is not a transaction!";
 			// Check that outpoint's index is present in the transaction pointed by txid
-			if (!Number.isInteger(tx.height) || input.outpoint.index < 0 || input.outpoint.index >= opoint.outputs.length)
-				throw "Invalid transaction: Invalid index in outpoint "+i;
+			if (!Number.isInteger(input.outpoint.index) || input.outpoint.index < 0 || input.outpoint.index >= opoint.outputs.length)
+				throw "Invalid transaction: Invalid index in outpoint "+i+". Found "+input.outpoint.index+" but there are only "+opoint.outputs.length+" outputs.";
 			// Verify signature on transaction
 			if (!(await ed.verify(input.sig, txnullhex, opoint.outputs[i].pubkey)))
 				throw "Invalid transaction: Invalid signature in outpoint "+i;
@@ -34,7 +33,7 @@ export async function validateTx(tx: any){
 		}
 		let sumOutputValues = 0;
 		for(let i=0; i<tx.outputs.length; i++){
-			if (!Number.isInteger(tx.height) || tx.outputs[i].value < 0)
+			if (!Number.isInteger(tx.outputs[i].value) || tx.outputs[i].value < 0)
 				throw "Invalid transaction: Output "+i+" has negative value"
 			if (! /[0-9a-f]{64}/.test(tx.outputs[i].pubkey))
 				throw "Invalid transaction: Output "+i+" has invalid public key";
@@ -55,6 +54,12 @@ export async function validateTx(tx: any){
 	}
 
 }
+
+// Demo valid tx with height in coinbase:
+// {"height":0,"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5cfbae1e911f9","value":50000000000}],"type":"transaction"}
+// {"object":{"height":0,"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5cfbae1e911f9","value":50000000000}],"type":"transaction"},"type":"object"}
+// {"inputs":[{"outpoint":{"index":0,"txid":"47ccdf2be98e95e4ce96a4d1561003d01b1d28ddbb3801129e27c1d1d6fcd3f2"},"sig":"a85177419191c702a308b26ce67856e8ea5b80265e683033685225c61ed2b19645662ca9494e8e1b95b20cfd3f41345b31a77fc2943b2c40f6c9778de8e98905"}],"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5cfbae1e911f9","value":10}],"type":"transaction"}
+// {"object":{"inputs":[{"outpoint":{"index":0,"txid":"47ccdf2be98e95e4ce96a4d1561003d01b1d28ddbb3801129e27c1d1d6fcd3f2"},"sig":"a85177419191c702a308b26ce67856e8ea5b80265e683033685225c61ed2b19645662ca9494e8e1b95b20cfd3f41345b31a77fc2943b2c40f6c9778de8e98905"}],"outputs":[{"pubkey":"8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5cfbae1e911f9","value":10}],"type":"transaction"},"type":"object"}
 
 // {"type": "transaction", "height":0, "outputs": [{"pubkey": "77bd8ef0bf4d9423f3681b01f8b5b4cfdf0ee69fb356a7762589f1b65cdcab63", "value": 50000000000}]}
 // with hash = "49737b7bca5955a9ea58ab44a00e72ac4804ad2a26b731b99069bdf035e071c3"
