@@ -8,3 +8,4 @@ objectDatabase/
 blockDatabase/
 transactionDatabase/
 debug/
+.DS_Store

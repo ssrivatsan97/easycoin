@@ -4,7 +4,7 @@ import * as network from './network'
 import {Object,receiveObject,sendObject,advertizeObject,requestObject} from './objects' // added in HW 2
 const canonicalize = require('canonicalize')
 
-const invalidMsgTimeout = 5000;
+const invalidMsgTimeout = 1000;
 
 const HelloMessage = Record({
 	type: Literal('hello'),
@@ -48,7 +48,7 @@ export function parseMessage(msg: string){
 	try{
 		return MessageObject.check(JSON.parse(msg));
 	} catch(e){
-		throw e;
+		throw "Message could not be parsed into JSON: "+msg;
 	}
 }
 
@@ -92,7 +92,8 @@ export class messageHandler{
 			this.jsonBuffer = "";
 
 			if(!this.peer.introduced && msgObject.type!=='hello'){
-				throw "Message sent before hello!";
+				network.closeDueToError(this.peer,"Message sent before hello!");
+				return;
 			}
 			switch(msgObject.type){
 				case 'hello':
