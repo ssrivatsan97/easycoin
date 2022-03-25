@@ -48,7 +48,7 @@ export function parseMessage(msg: string){
 	try{
 		return MessageObject.check(JSON.parse(msg));
 	} catch(e){
-		throw e.toString();
+		throw "Message could not be parsed into JSON: "+msg;
 	}
 }
 
@@ -92,7 +92,8 @@ export class messageHandler{
 			this.jsonBuffer = "";
 
 			if(!this.peer.introduced && msgObject.type!=='hello'){
-				throw "Message sent before hello!";
+				network.closeDueToError(this.peer,"Message sent before hello!");
+				return;
 			}
 			switch(msgObject.type){
 				case 'hello':

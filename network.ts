@@ -69,12 +69,7 @@ export function connectAsServer(bootstrapMode=false){
 		});
 
 		socket.on('data', data => {
-			try{
-				msgHandler.handle(data.toString());
-			} catch(e){
-				console.log(e);
-				closeDueToError(thisPeer, e)
-			}
+			msgHandler.handle(data.toString());
 		});
 	});
 
@@ -126,13 +121,7 @@ export async function connectAsClient(){
 			});
 
 			client.on('data', data => {
-				try{
-					msgHandler.handle(data.toString());
-				} catch(e){
-					console.log("Invalid message from "+peer.name+" at "+peer.socket.remoteAddress);
-					console.log(e);
-					closeDueToError(peer, e);
-				}
+				msgHandler.handle(data.toString());
 			});
 
 			client.on('close', (hadError) => {
