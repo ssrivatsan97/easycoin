@@ -8,7 +8,7 @@ const invalidMsgTimeout = 1000;
 
 const HelloMessage = Record({
 	type: Literal('hello'),
-	version: Template(Literal('0.7.'), Number),
+	version: Template(Literal('0.8.'), Number),
 	agent: String
 });
 
