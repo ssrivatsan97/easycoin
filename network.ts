@@ -150,7 +150,7 @@ export function broadcastMessage(data:string){
 }
 
 export function sayHello(peer:Peer, myName:string){
-	sendMessage(Message.encodeMessage({type:'hello',version:'0.7.0',agent:myName}), peer);
+	sendMessage(Message.encodeMessage({type:'hello',version:'0.8.0',agent:myName}), peer);
 }
 
 export function askForPeers(peer:Peer){
