@@ -9,12 +9,13 @@ export function hexToNumber(hex:string){
 // This function is added in HW 2
 export function nullSignatures(obj:any){
 	// The following replaces all occurrences of the pattern "sig":"<sequence of 128 hex digits>" by the string "sig":null
-	return canonicalize(obj).replace(/\"sig\":\"[0-9a-f]{128}\"/,'\"sig\":null');
+	return canonicalize(obj).replaceAll(/\"sig\":\"[0-9a-f]{128}\"/g,'\"sig\":null');
 }
 
 // This function is added in HW 2
 export function objectToId(object: any){
-	return Buffer.from(sha256(canonicalize(object))).toString('hex')
+	let enc = new TextEncoder()
+	return Buffer.from(sha256(enc.encode(canonicalize(object)))).toString('hex')
 }
 
 export function parseIpPort(str:string){
