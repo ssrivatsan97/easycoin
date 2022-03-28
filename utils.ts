@@ -26,7 +26,7 @@ export function parseIpPort(str:string){
 		ipPort[0] = ipPort[0].substr(1)
 	}
 	if(ipPort.length!==2)
-		throw "Too many colons"
+		throw "Can't parse into name/ip:port"
 	let port = parseInt(ipPort[1])
 	if(port!==NaN)
 		return [ipPort[0], port]

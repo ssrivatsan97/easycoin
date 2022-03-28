@@ -69,7 +69,7 @@ export async function requestObjectIfNotPresent(objectid: string, peer:Peer){
 		requestObject(objectid,peer)
 	}
 	else
-		console.log("Object already exists")
+		console.log("Object already exists with objectid "+objectid)
 }
 
 // export function requestAllObject(objectid: string){
@@ -103,7 +103,7 @@ export async function receiveObject(object:any, sender:Peer){
 			advertizeObject(objectid,sender);
 		}
 	} else
-		console.log("Object already exists")
+		console.log("Object already exists with objectid "+objectid)
 }
 
 export async function sendObject(objectid:string, peer:Peer){
