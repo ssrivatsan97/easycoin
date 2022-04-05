@@ -66,8 +66,13 @@ export function connectAsServer(bootstrapMode=false){
 		});
 
 		socket.on('data', data => {
+			console.log("Data received from "+socket.remoteAddress+" port "+socket.remotePort+": "+data)
 			msgHandler.handle(data.toString());
 		});
+
+		socket.on('error', error => {
+			console.log("Connection error with "+socket.remoteAddress+" port "+socket.remotePort+": "+ error)
+		})
 	});
 
 	server.on('error',function(error){
@@ -114,10 +119,11 @@ export async function connectAsClient(){
 			});
 
 			client.on('error', (error) => {
-				console.log('Error: ' + error);
+				console.log("Connection error with "+client.remoteAddress+" port "+client.remotePort+": "+ error)
 			});
 
 			client.on('data', data => {
+				console.log("Data received from "+client.remoteAddress+" port "+client.remotePort+": "+data)
 				msgHandler.handle(data.toString());
 			});
 
@@ -188,9 +194,13 @@ export async function readDiscoveredPeers(){
 	}
 }
 
-export function closeDueToError(peer:Peer, error:string){
+export function reportError(peer:Peer, error:string){
 	console.log(error);
 	sendMessage(Message.encodeMessage({type:"error", error:error}), peer)
+}
+
+export function closeDueToError(peer:Peer, error:string){
+	reportError(peer, error)
 	setTimeout(() => {
 		peer.socket.destroy();
 	}, 500)
