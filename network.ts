@@ -4,7 +4,7 @@ import * as fs from 'fs'
 import * as Message from './message'
 import {Peer} from './peer'
 import level from 'level-ts'
-import {parseIpPort} from './utils'
+import {parseIpPort, validateIpPort} from './utils'
 const canonicalize = require('canonicalize')
 
 const config = {
@@ -120,6 +120,7 @@ export async function connectAsClient(){
 
 			client.on('error', (error) => {
 				console.log("Connection error with "+client.remoteAddress+" port "+client.remotePort+": "+ error)
+				discoveredPeerList.splice(i,1)
 			});
 
 			client.on('data', data => {
@@ -173,7 +174,7 @@ export function askForPeers(peer:Peer){
 export async function discoveredNewPeers(peerset: string[]){
 	const discoveredPeerList = await readDiscoveredPeers();
 	peerset.forEach((item,index) => {
-		if(!discoveredPeerList.includes(item))
+		if(!discoveredPeerList.includes(item) && validateIpPort(item))
 			discoveredPeerList.push(item);
 	});
 	await peerDB.put('discoveredPeerList', discoveredPeerList);
