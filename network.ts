@@ -107,6 +107,7 @@ export async function connectAsClient(){
 			[address, port] = parseIpPort(peerAddress)
 		} catch(error){
 			console.log("Peer address " + peerAddress + " is invalid: " + error)
+			discoveredPeerList.splice(i--,1)
 		}
 		if(address!==undefined && port!==undefined){
 			client.connect({port:port, host:address}, () => {
@@ -121,7 +122,7 @@ export async function connectAsClient(){
 			client.on('error', (error) => {
 				console.log("Connection error with "+client.remoteAddress+" port "+client.remotePort+": "+ error)
 				console.log("Removing "+peerAddress+" from discovered peer list.")
-				discoveredPeerList.splice(i,1)
+				discoveredPeerList.splice(i--,1)
 			});
 
 			client.on('data', data => {
@@ -142,6 +143,7 @@ export async function connectAsClient(){
 			});
 		}
 	}
+	await peerDB.put('discoveredPeerList', discoveredPeerList)
 }
 
 export function sendMessage(data:string, peer:Peer){
