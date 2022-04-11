@@ -4,7 +4,6 @@ import * as network from './network'
 import * as message from './message'
 import {Peer} from './peer'
 import {validateTx} from './transactions'
-import {validateBlock} from './blocks' // Added in HW 3
 import {objectToId} from './utils'
 import level from 'level-ts'
 const canonicalize = require('canonicalize')
