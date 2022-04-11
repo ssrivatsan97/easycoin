@@ -1,9 +1,10 @@
 // This file is added in HW 2
-import { Boolean, Number, String, Literal, Array, Tuple, Record, Union, Static, Template } from 'runtypes';
+import { Boolean, Number, String, Literal, Array, Tuple, Record, Union, Static, Template, Partial, Null } from 'runtypes';
 import * as network from './network'
 import * as message from './message'
 import {Peer} from './peer'
 import {validateTx} from './transactions'
+import {validateBlock} from './blocks' // Added in HW 3
 import {objectToId} from './utils'
 import level from 'level-ts'
 const canonicalize = require('canonicalize')
@@ -25,17 +26,19 @@ export const CoinbaseObject = Record({
 	outputs: Array(Record({pubkey:String,value:Number}))
 });
 
-// TODO: A General TxObject also counts as a CoinbaseObject. What to do?
-
 export const BlockObject = Record({
 	type: Literal("block"),
 	txids: Array(String),
 	nonce: String,
-	previd: String,
+	previd: String.Or(Null),
 	created: Number,
 	T: String
-	// miner and note are optional fields. If a block includes such additional parameters, it would still be considered a valid block object
-});
+}).And(Partial({
+	miner: String,
+	note: String
+}));
+
+// TODO (optional): Type validation with verbose error messages can be done on Runtypes!
 
 // Only there in order to have a dummy object type for testing
 // Hash = "c90232586b801f9558a76f2f963eccd831d9fe6775e4c8f1446b2331aa2132f2"
@@ -46,6 +49,11 @@ const TestObject = Record({
 export const TxObject = Union(GeneralTxObject, CoinbaseObject);
 export const Object = Union(GeneralTxObject, CoinbaseObject, BlockObject, TestObject);
 
+export type GeneralTxObjectType = Static<typeof GeneralTxObject>
+export type CoinbaseObjectType = Static<typeof CoinbaseObject>
+export type TxObjectType = Static<typeof TxObject>
+export type BlockObjectType = Static<typeof BlockObject>
+export type ObjectType = Static<typeof Object>
 
 const objectDB = new level('./objectDatabase');
 
@@ -115,5 +123,3 @@ export async function sendObject(objectid:string, peer:Peer){
 		throw "Object not found in database";
 	}
 }
-
-// export type Object = Static<typeof Object>;

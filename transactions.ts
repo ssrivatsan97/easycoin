@@ -5,16 +5,17 @@ import * as message from './message'
 import {Peer} from './peer'
 import {nullSignatures} from './utils'
 import {GeneralTxObject, CoinbaseObject, TxObject, getObject} from './objects'
+import {GeneralTxObjectType, CoinbaseObjectType, TxObjectType} from './objects'
 const canonicalize = require('canonicalize')
 import * as ed from '@noble/ed25519'
 
-export async function validateTx(tx: any){
+export async function validateTx(tx: TxObjectType){
 	if(GeneralTxObject.guard(tx)){
 		const txnullhex = Buffer.from(nullSignatures(tx)).toString('hex');
 		let sumInputValues = 0;
 		for(let i=0; i<tx.inputs.length; i++){
 			let input = tx.inputs[i];
-			let opoint: any;
+			let opoint: TxObjectType;
 			// Check that outpoint's txid is available in database.
 			try{
 				opoint = await getObject(input.outpoint.txid)
@@ -62,4 +63,22 @@ export async function validateTx(tx: any){
 
 }
 
+// IMPORTANT: Validate the transaction before passing it to this function!
+export async function inputValue(tx: GeneralTxObjectType){
+	let sumInputValues = 0;
+	for(let i=0; i<tx.inputs.length; i++){
+		let input = tx.inputs[i];
+		let opoint = await getObject(input.outpoint.txid)
+		sumInputValues += opoint.outputs[input.outpoint.index].value
+	}
+	return sumInputValues
+}
 
+// IMPORTANT: Validate the transaction before passing it to this function!
+export function outputValue(tx: TxObjectType){
+	let sumOutputValues = 0;
+	for(let i=0; i<tx.outputs.length; i++){
+		sumOutputValues += tx.outputs[i].value;
+	}
+	return sumOutputValues
+}
