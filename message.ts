@@ -124,11 +124,9 @@ export class messageHandler{
 
 				case 'getobject':
 					console.log("Peer "+this.peer.name+" asked for object "+msgObject.objectid);
-					try{
-						sendObject(msgObject.objectid, this.peer)
-					} catch(error){
+					sendObject(msgObject.objectid, this.peer).catch((error) => {
 						console.log(error)
-					}
+					})
 					break;
 
 				case 'object':
