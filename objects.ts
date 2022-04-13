@@ -103,6 +103,7 @@ export async function receiveObject(object:any, sender:Peer){
 				console.log("Transaction is valid")
 			} catch(error){
 				console.log(error);
+				network.reportError(sender, error as string)
 			}
 		} else
 			objectIsValid = true; // For now. This will change when we can validate other object types.
