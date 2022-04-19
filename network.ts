@@ -14,7 +14,7 @@ const config = {
 	"myName" : "EasyCoin",
 	"bootstrapName" : "Bootstrap",
 	"bootstrapAddress" : "149.28.220.241",
-	"bootstrapPort" : 18018,
+	"bootstrapPort" : 18020,
 	"hardcodedPeerList" : ["localhost:18020", "149.28.220.241:18018"]
 }
 

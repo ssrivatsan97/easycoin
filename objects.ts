@@ -37,8 +37,6 @@ export const BlockObject = Record({
 	note: String
 }));
 
-// TODO (optional): Type validation with verbose error messages can be done on Runtypes!
-
 // Only there in order to have a dummy object type for testing
 // Hash = "c90232586b801f9558a76f2f963eccd831d9fe6775e4c8f1446b2331aa2132f2"
 const TestObject = Record({
@@ -79,20 +77,45 @@ export async function requestObjectIfNotPresent(objectid: string, peer:Peer){
 		console.log("Object already exists with objectid "+objectid)
 }
 
-// export function requestAllObject(objectid: string){
-// 	const getObjectMessage = message.encodeMessage({type:"getobject",objectid:objectid});
-// 	network.broadcastMessage(getObjectMessage);
-// }
+export function requestAllObject(objectid: string){
+	const getObjectMessage = message.encodeMessage({type:"getobject",objectid:objectid});
+	network.broadcastMessage(getObjectMessage);
+}
+
+// Function to callback (resolve function) on receiving a certain object
+// NOTE: It will send back unvalidated object!
+let objectWaiters: {[objectid: string]: ((obj: any) => void)[]} = {}
+
+export function requestAndWaitForObject(objectid: string, timeout: number){
+	requestAllObject(objectid)
+	return new Promise((resolve,reject) => {
+		if(typeof objectWaiters[objectid] === "undefined"){
+			objectWaiters[objectid] = [resolve]
+		} else{
+			objectWaiters[objectid].push(resolve)
+		}
+		setTimeout(() => {
+			reject()
+		}, timeout)
+		requestAllObject(objectid)
+	})
+}
 
 export function advertizeObject(objectid:string, sender:Peer){
 	const iHaveObjectMessage = message.encodeMessage({type:"ihaveobject",objectid:objectid});
 	network.broadcastMessageExceptSender(iHaveObjectMessage,sender);
-	// network.broadcastMessage(iHaveObjectMessage)
 }
 
 export async function receiveObject(object:any, sender:Peer){
 	const objectid = objectToId(object);
 	if (!(await objectDB.exists(objectid))){
+		if (typeof objectWaiters[objectid] !== "undefined"){ // Added in HW 3
+			let callbacks = objectWaiters[objectid]
+			delete objectWaiters[objectid]
+			for (let callback of callbacks){
+				callback(object)
+			}
+		}
 		let objectIsValid = false;
 		if (TxObject.guard(object)){
 			console.log("Validating transaction...")
