@@ -105,8 +105,16 @@ export async function receiveObject(object:any, sender:Peer){
 				console.log(error);
 				network.reportError(sender, error as string)
 			}
-		} else
-			objectIsValid = true; // For now. This will change when we can validate other object types.
+		} else if (BlockObject.guard(object)){ // This case added in HW 3
+			console.log("Validating block...")
+			try{
+				await validateBlock(object)
+				objectIsValid=true
+				console.log("Block is valid")
+			} catch(error){
+				console.log(error);
+			}
+		}
 		if(objectIsValid){
 			await objectDB.put(objectid, canonicalize(object));
 			advertizeObject(objectid,sender);
