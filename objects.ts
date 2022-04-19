@@ -4,6 +4,7 @@ import * as network from './network'
 import * as message from './message'
 import {Peer} from './peer'
 import {validateTx} from './transactions'
+import {validateBlock} from './blocks' // Added in HW 3
 import {objectToId} from './utils'
 import level from 'level-ts'
 const canonicalize = require('canonicalize')
@@ -101,9 +102,7 @@ export async function receiveObject(object:any, sender:Peer){
 				objectIsValid=true
 				console.log("Transaction is valid")
 			} catch(error){
-				network.reportError(sender, error as string)
 				console.log(error);
-				network.reportError(sender, error as string)
 			}
 		} else if (BlockObject.guard(object)){ // This case added in HW 3
 			console.log("Validating block...")

@@ -7,6 +7,5 @@ discoveredPeerList/
 objectDatabase/
 blockDatabase/
 transactionDatabase/
-debug/*.txt
-debug/keysDatabase/
+debug/
 .DS_Store
