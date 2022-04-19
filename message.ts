@@ -45,11 +45,17 @@ const ObjectMessage = Record({
 const MessageObject = Union(HelloMessage, PeersMessage, GetPeersMessage, ErrorMessage, GetObjectMessage, IHaveObjectMessage, ObjectMessage); // changed in HW 2
 
 export function parseMessage(msg: string){
+	let parsedMessage 
 	try{
-		return MessageObject.check(JSON.parse(msg));
+		parsedMessage = JSON.parse(msg);
 	} catch(e){
 		throw "Message could not be parsed into JSON: "+msg;
 	}
+	let validate = MessageObject.validate(parsedMessage)
+	if (!validate.success){
+		throw JSON.stringify(validate.details)
+	}
+	return parsedMessage
 }
 
 export function encodeMessage(obj: any){
@@ -81,7 +87,7 @@ export class messageHandler{
 				this.jsonBuffer = msgItem;
 				if(!this.waiting){
 					this.myTimeout = setTimeout(() => {
-						network.closeDueToError(this.peer, "Invalid message: "+msgItem)
+						network.closeDueToError(this.peer, "Invalid message: "+msgItem+". Details: "+e)
 					}, invalidMsgTimeout);
 					this.waiting = true;
 				}
