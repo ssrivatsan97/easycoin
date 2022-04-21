@@ -1,63 +1,140 @@
 // This file is added in HW 2
-import { Boolean, Number, String, Literal, Array, Tuple, Record, Union, Static, Template } from 'runtypes';
 import * as network from './network'
 import * as message from './message'
 import {Peer} from './peer'
-import level from 'level-ts'
 import {nullSignatures} from './utils'
 import {GeneralTxObject, CoinbaseObject, TxObject, getObject} from './objects'
+import {GeneralTxObjectType, CoinbaseObjectType, TxObjectType} from './objects'
 const canonicalize = require('canonicalize')
 import * as ed from '@noble/ed25519'
 
-export async function validateTx(tx: any){
+// export async function validateTxForMempool(tx: TxObjectType){
+// 	// This will change later when we validate wrt mempool utxo
+// 	try{
+// 		await validateTx(tx)
+// 	} catch(error){
+// 		throw error
+// 	}
+// 	let sumInputValues = 0;
+// 	for(let i=0; i<tx.inputs.length; i++){
+// 		let input = tx.inputs[i];
+// 		let opoint: TxObjectType;
+// 		// Check that outpoint's txid is available in database.
+// 		try{
+// 			opoint = await getObject(input.outpoint.txid)
+// 		} catch(error){
+// 			throw "Invalid transaction: Outpoint "+i+" not found in database";
+// 		}
+// 		// Check that outpoint's txid indeed points to a transaction.
+// 		if (!TxObject.guard(opoint))
+// 			throw "Invalid transaction: Outpoint "+i+" is not a transaction!";
+// 		// Check that outpoint's index is present in the transaction pointed by txid
+// 		if (!Number.isInteger(input.outpoint.index) || input.outpoint.index < 0 || input.outpoint.index >= opoint.outputs.length)
+// 			throw "Invalid transaction: Invalid index in outpoint "+i+". Found "+input.outpoint.index+" but expected integer between 0 and "+opoint.outputs.length;
+// 		// Check that the transaction doesn't have duplicate outpoints
+// 		for (let j=0; j<i; j++){
+// 			if (input.outpoint.txid === tx.inputs[j].outpoint.txid && input.outpoint.index === tx.inputs[j].outpoint.index)
+// 				throw "Invalid transaction: Outpoints "+i+" and "+j+" are identical."
+// 		}
+// 		// Verify signature on transaction
+// 		let signValid = false
+// 		try{
+// 			signValid = await ed.verify(input.sig, txnullhex, opoint.outputs[input.outpoint.index].pubkey)
+// 		} catch(error){
+// 			throw "Invalid transaction: Could not validate signature in outpoint "+i+": "+error
+// 		}
+// 		if (!signValid)
+// 			throw "Invalid transaction: Invalid signature in outpoint "+i
+// 		sumInputValues += opoint.outputs[input.outpoint.index].value;
+// 	}
+// 	let sumOutputValues = 0;
+// 	for(let i=0; i<tx.outputs.length; i++){
+// 		if (!Number.isInteger(tx.outputs[i].value) || tx.outputs[i].value < 0)
+// 			throw "Invalid transaction: Value"+tx.outputs[i].value+" of output "+i+" is not non-negative integer"
+// 		if (! /[0-9a-f]{64}/.test(tx.outputs[i].pubkey))
+// 			throw "Invalid transaction: Output "+i+" has invalid public key";
+// 		sumOutputValues += tx.outputs[i].value;
+// 	}
+// 	if (sumInputValues < sumOutputValues)
+// 		throw "Invalid transaction: Output value "+sumOutputValues+" > sum of input values "+sumInputValues
+
+// }
+
+export async function validateTx(tx: TxObjectType){
 	if(GeneralTxObject.guard(tx)){
 		const txnullhex = Buffer.from(nullSignatures(tx)).toString('hex');
 		let sumInputValues = 0;
 		for(let i=0; i<tx.inputs.length; i++){
 			let input = tx.inputs[i];
-			// let opoint: any;
+			let opoint: TxObjectType;
 			// Check that outpoint's txid is available in database.
-			// TODO: Fallback if this object is not available
-			let opoint: any;
 			try{
 				opoint = await getObject(input.outpoint.txid)
 			} catch(error){
 				throw "Invalid transaction: Outpoint "+i+" not found in database";
 			}
 			// Check that outpoint's txid indeed points to a transaction.
-			// Later, also check that it is a transaction in the past chain!
 			if (!TxObject.guard(opoint))
 				throw "Invalid transaction: Outpoint "+i+" is not a transaction!";
 			// Check that outpoint's index is present in the transaction pointed by txid
-			if (opoint.outputs.length <= input.outpoint.index)
-				throw "Invalid transaction: Invalid index in outpoint "+i;
+			if (!Number.isInteger(input.outpoint.index) || input.outpoint.index < 0 || input.outpoint.index >= opoint.outputs.length)
+				throw "Invalid transaction: Invalid index in outpoint "+i+". Found "+input.outpoint.index+" but expected integer between 0 and "+opoint.outputs.length;
+			// Check that the transaction doesn't have duplicate outpoints
+			for (let j=0; j<i; j++){
+				if (input.outpoint.txid === tx.inputs[j].outpoint.txid && input.outpoint.index === tx.inputs[j].outpoint.index)
+					throw "Invalid transaction: Outpoints "+i+" and "+j+" are identical."
+			}
 			// Verify signature on transaction
-			if (!(await ed.verify(input.sig, txnullhex, opoint.outputs[i].pubkey)))
-				throw "Invalid transaction: Invalid signature in outpoint "+i;
-			sumInputValues += opoint.outputs[i].value;
+			let signValid = false
+			try{
+				signValid = await ed.verify(input.sig, txnullhex, opoint.outputs[input.outpoint.index].pubkey)
+			} catch(error){
+				throw "Invalid transaction: Could not validate signature in outpoint "+i+": "+error
+			}
+			if (!signValid)
+				throw "Invalid transaction: Invalid signature in outpoint "+i
+			sumInputValues += opoint.outputs[input.outpoint.index].value;
 		}
 		let sumOutputValues = 0;
 		for(let i=0; i<tx.outputs.length; i++){
+			if (!Number.isInteger(tx.outputs[i].value) || tx.outputs[i].value < 0)
+				throw "Invalid transaction: Value"+tx.outputs[i].value+" of output "+i+" is not non-negative integer"
 			if (! /[0-9a-f]{64}/.test(tx.outputs[i].pubkey))
 				throw "Invalid transaction: Output "+i+" has invalid public key";
 			sumOutputValues += tx.outputs[i].value;
 		}
-		if (sumInputValues <= sumOutputValues)
-			throw "Invalid transaction: Output value > sum of input values"
+		if (sumInputValues < sumOutputValues)
+			throw "Invalid transaction: Output value "+sumOutputValues+" > sum of input values "+sumInputValues
 	} else if(CoinbaseObject.guard(tx)){
-		// TODO: Insert any additional logic here
-		for(let i=0; i<tx.outputs.length; i++){
-			if (! /[0-9a-f]{64}/.test(tx.outputs[i].pubkey))
-				throw "Invalid transaction: Output "+i+" has invalid public key";
-		}
-	}else {
+		// TODO: Insert additional logic here later
+		if (!Number.isInteger(tx.height) || tx.height < 0)
+			throw "Invalid coinbase transaction: Height "+tx.height+" is not non-negative integer"
+		if (tx.outputs.length!==1)
+			throw "Invalid coinbase transaction: Contains "+tx.outputs.length+" outputs, expected only 1"
+		if (! /[0-9a-f]{64}/.test(tx.outputs[0].pubkey))
+			throw "Invalid coinbase transaction: Output has invalid public key";
+	} else{
 		throw "Invalid transaction: Doesn't match transaction type"
 	}
 
 }
 
-// {"type": "transaction", "height":0, "outputs": [{"pubkey": "77bd8ef0bf4d9423f3681b01f8b5b4cfdf0ee69fb356a7762589f1b65cdcab63", "value": 50000000000}]}
-// with hash = "49737b7bca5955a9ea58ab44a00e72ac4804ad2a26b731b99069bdf035e071c3"
-// {"object":{"type": "transaction", "height":0, "outputs": [{"pubkey": "77bd8ef0bf4d9423f3681b01f8b5b4cfdf0ee69fb356a7762589f1b65cdcab63", "value": 50000000000}]},"type":"object"}
-// {"type": "transaction", "inputs": [{"outpoint": {"txid": "49737b7bca5955a9ea58ab44a00e72ac4804ad2a26b731b99069bdf035e071c3", "index": 0}, "sig": "aed4d1f13933e195f68add86915c099366f7d198602afb13551df5575dc57013b83d84f70b310e28c72b0c143d8fab6ce2fc38a7f88d466d1ccc88a4b2970809"}], "outputs": [{"pubkey": "77bd8ef0bf4d9423f3681b01f8b5b4cfdf0ee69fb356a7762589f1b65cdcab63", "value": 10}]}
-// {"object":{"type": "transaction", "inputs": [{"outpoint": {"txid": "49737b7bca5955a9ea58ab44a00e72ac4804ad2a26b731b99069bdf035e071c3", "index": 0}, "sig": "aed4d1f13933e195f68add86915c099366f7d198602afb13551df5575dc57013b83d84f70b310e28c72b0c143d8fab6ce2fc38a7f88d466d1ccc88a4b2970809"}], "outputs": [{"pubkey": "77bd8ef0bf4d9423f3681b01f8b5b4cfdf0ee69fb356a7762589f1b65cdcab63", "value": 10}]},"type":"object"}
+// IMPORTANT: Validate the transaction before passing it to this function!
+export async function inputValue(tx: GeneralTxObjectType){
+	let sumInputValues = 0;
+	for(let i=0; i<tx.inputs.length; i++){
+		let input = tx.inputs[i];
+		let opoint = await getObject(input.outpoint.txid)
+		sumInputValues += opoint.outputs[input.outpoint.index].value
+	}
+	return sumInputValues
+}
+
+// IMPORTANT: Validate the transaction before passing it to this function!
+export function outputValue(tx: TxObjectType){
+	let sumOutputValues = 0;
+	for(let i=0; i<tx.outputs.length; i++){
+		sumOutputValues += tx.outputs[i].value;
+	}
+	return sumOutputValues
+}

@@ -1,9 +1,10 @@
 // This file is added in HW 2
-import { Boolean, Number, String, Literal, Array, Tuple, Record, Union, Static, Template } from 'runtypes';
+import { Boolean, Number, String, Literal, Array, Tuple, Record, Union, Static, Template, Partial, Null } from 'runtypes';
 import * as network from './network'
 import * as message from './message'
 import {Peer} from './peer'
 import {validateTx} from './transactions'
+import {validateBlock} from './blocks'
 import {objectToId} from './utils'
 import level from 'level-ts'
 const canonicalize = require('canonicalize')
@@ -21,21 +22,21 @@ export const GeneralTxObject = Record({
 
 export const CoinbaseObject = Record({
 	type: Literal("transaction"),
-	// height: Number, // seems like this is an optional field (?)
+	height: Number,
 	outputs: Array(Record({pubkey:String,value:Number}))
 });
-
-// TODO: A General TxObject also counts as a CoinbaseObject. What to do?
 
 export const BlockObject = Record({
 	type: Literal("block"),
 	txids: Array(String),
 	nonce: String,
-	previd: String,
+	previd: String.Or(Null),
 	created: Number,
 	T: String
-	// miner and note are optional fields. If a block includes such additional parameters, it would still be considered a valid block object
-});
+}).And(Partial({
+	miner: String,
+	note: String
+}));
 
 // Only there in order to have a dummy object type for testing
 // Hash = "c90232586b801f9558a76f2f963eccd831d9fe6775e4c8f1446b2331aa2132f2"
@@ -46,6 +47,11 @@ const TestObject = Record({
 export const TxObject = Union(GeneralTxObject, CoinbaseObject);
 export const Object = Union(GeneralTxObject, CoinbaseObject, BlockObject, TestObject);
 
+export type GeneralTxObjectType = Static<typeof GeneralTxObject>
+export type CoinbaseObjectType = Static<typeof CoinbaseObject>
+export type TxObjectType = Static<typeof TxObject>
+export type BlockObjectType = Static<typeof BlockObject>
+export type ObjectType = Static<typeof Object>
 
 const objectDB = new level('./objectDatabase');
 
@@ -59,9 +65,17 @@ export async function getObject(objectid: string){
 	}
 }
 
-export function requestObject(objectid: string, peer:Peer){
+function requestObject(objectid: string, peer:Peer){
 	const getObjectMessage = message.encodeMessage({type:"getobject",objectid:objectid});
 	network.sendMessage(getObjectMessage,peer);
+}
+
+export async function requestObjectIfNotPresent(objectid: string, peer:Peer){
+	if (!(await objectDB.exists(objectid))){
+		requestObject(objectid,peer)
+	}
+	else
+		console.log("Object already exists with objectid "+objectid)
 }
 
 export function requestAllObject(objectid: string){
@@ -69,30 +83,68 @@ export function requestAllObject(objectid: string){
 	network.broadcastMessage(getObjectMessage);
 }
 
-export function advertizeObject(objectid:string){
-	const iHaveObjectMessage = message.encodeMessage({type:"ihaveobject",objectid:objectid});
-	network.broadcastMessage(iHaveObjectMessage);
+// Function to callback (resolve function) on receiving a certain object
+// NOTE: It will send back unvalidated object!
+let objectWaiters: {[objectid: string]: ((obj: any) => void)[]} = {}
+
+export function requestAndWaitForObject(objectid: string, timeout: number){
+	requestAllObject(objectid)
+	return new Promise((resolve,reject) => {
+		if(typeof objectWaiters[objectid] === "undefined"){
+			objectWaiters[objectid] = [resolve]
+		} else{
+			objectWaiters[objectid].push(resolve)
+		}
+		setTimeout(() => {
+			reject()
+		}, timeout)
+		requestAllObject(objectid)
+	})
 }
 
-export async function receiveObject(object:any){
-	let objectIsValid = false;
-	if (TxObject.guard(object)){
-		console.log("Validating transaction...")
-		try{
-			await validateTx(object)
-			objectIsValid=true
-			console.log("Transaction is valid")
-		} catch(error){
-			console.log(error);
+export function advertizeObject(objectid:string, sender:Peer){
+	const iHaveObjectMessage = message.encodeMessage({type:"ihaveobject",objectid:objectid});
+	network.broadcastMessageExceptSender(iHaveObjectMessage,sender);
+}
+
+export async function receiveObject(object:any, sender:Peer){
+	const objectid = objectToId(object);
+	if (!(await objectDB.exists(objectid))){
+		if (typeof objectWaiters[objectid] !== "undefined"){ // Added in HW 3
+			let callbacks = objectWaiters[objectid]
+			delete objectWaiters[objectid]
+			for (let callback of callbacks){
+				callback(object)
+			}
+		}
+		let objectIsValid = false;
+		if (TxObject.guard(object)){
+			console.log("Validating transaction...")
+			try{
+				await validateTx(object)
+				objectIsValid=true
+				console.log("Transaction is valid")
+			} catch(error){
+				console.log(error);
+				network.reportError(sender, error as string)
+			}
+		} else if (BlockObject.guard(object)){ // This case added in HW 3
+			console.log("Validating block...")
+			try{
+				await validateBlock(object)
+				objectIsValid=true
+				console.log("Block is valid")
+			} catch(error){
+				console.log(error);
+				network.reportError(sender, error as string)
+			}
+		}
+		if(objectIsValid){
+			await objectDB.put(objectid, canonicalize(object));
+			advertizeObject(objectid,sender);
 		}
 	} else
-		objectIsValid = true; // For now. This will change when we can validate other object types.
-	const objectid = objectToId(object);
-	if(objectIsValid){
-		if (!(await objectDB.exists(objectid)))
-			await objectDB.put(objectid, canonicalize(object));
-		advertizeObject(objectid);
-	}
+		console.log("Object already exists with objectid "+objectid)
 }
 
 export async function sendObject(objectid:string, peer:Peer){
@@ -104,5 +156,3 @@ export async function sendObject(objectid:string, peer:Peer){
 		throw "Object not found in database";
 	}
 }
-
-// export type Object = Static<typeof Object>;

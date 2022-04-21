@@ -4,7 +4,7 @@ import * as fs from 'fs'
 import * as Message from './message'
 import {Peer} from './peer'
 import level from 'level-ts'
-import {parseIpPort} from './utils'
+import {parseIpPort, validateIpPort} from './utils'
 const canonicalize = require('canonicalize')
 
 const config = {
@@ -14,7 +14,7 @@ const config = {
 	"myName" : "EasyCoin",
 	"bootstrapName" : "Bootstrap",
 	"bootstrapAddress" : "149.28.220.241",
-	"bootstrapPort" : 18018,
+	"bootstrapPort" : 18020,
 	"hardcodedPeerList" : ["localhost:18020", "149.28.220.241:18018"]
 }
 
@@ -66,8 +66,13 @@ export function connectAsServer(bootstrapMode=false){
 		});
 
 		socket.on('data', data => {
+			console.log("Data received from "+socket.remoteAddress+" port "+socket.remotePort+": "+data)
 			msgHandler.handle(data.toString());
 		});
+
+		socket.on('error', error => {
+			console.log("Connection error with "+socket.remoteAddress+" port "+socket.remotePort+": "+ error)
+		})
 	});
 
 	server.on('error',function(error){
@@ -102,6 +107,8 @@ export async function connectAsClient(){
 			[address, port] = parseIpPort(peerAddress)
 		} catch(error){
 			console.log("Peer address " + peerAddress + " is invalid: " + error)
+			discoveredPeerList.splice(i--,1)
+			console.log("Removing " + peerAddress + " from discovered peers list.")
 		}
 		if(address!==undefined && port!==undefined){
 			client.connect({port:port, host:address}, () => {
@@ -114,10 +121,14 @@ export async function connectAsClient(){
 			});
 
 			client.on('error', (error) => {
-				console.log('Error: ' + error);
+				console.log("Connection error with "+client.remoteAddress+" port "+client.remotePort+": "+ error)
+				console.log("Removing "+peerAddress+" from discovered peer list.")
+				discoveredPeerList.splice(i--,1)
+				console.log("Removing " + peerAddress + " from discovered peers list.")
 			});
 
 			client.on('data', data => {
+				console.log("Data received from "+client.remoteAddress+" port "+client.remotePort+": "+data)
 				msgHandler.handle(data.toString());
 			});
 
@@ -134,6 +145,7 @@ export async function connectAsClient(){
 			});
 		}
 	}
+	await peerDB.put('discoveredPeerList', discoveredPeerList)
 }
 
 export function sendMessage(data:string, peer:Peer){
@@ -149,8 +161,15 @@ export function broadcastMessage(data:string){
 	});
 }
 
+export function broadcastMessageExceptSender(data:string, sender:Peer){
+	connectedPeerList.forEach((peer,index) => {
+		if(peer!==sender)
+			sendMessage(data,peer);
+	});
+}
+
 export function sayHello(peer:Peer, myName:string){
-	sendMessage(Message.encodeMessage({type:'hello',version:'0.7.0',agent:myName}), peer);
+	sendMessage(Message.encodeMessage({type:'hello',version:'0.8.0',agent:myName}), peer);
 }
 
 export function askForPeers(peer:Peer){
@@ -160,8 +179,9 @@ export function askForPeers(peer:Peer){
 export async function discoveredNewPeers(peerset: string[]){
 	const discoveredPeerList = await readDiscoveredPeers();
 	peerset.forEach((item,index) => {
-		if(!discoveredPeerList.includes(item))
+		if(!discoveredPeerList.includes(item) && validateIpPort(item)){
 			discoveredPeerList.push(item);
+		}
 	});
 	await peerDB.put('discoveredPeerList', discoveredPeerList);
 }
@@ -181,9 +201,13 @@ export async function readDiscoveredPeers(){
 	}
 }
 
-export function closeDueToError(peer:Peer, error:string){
+export function reportError(peer:Peer, error:string){
 	console.log(error);
 	sendMessage(Message.encodeMessage({type:"error", error:error}), peer)
+}
+
+export function closeDueToError(peer:Peer, error:string){
+	reportError(peer, error)
 	setTimeout(() => {
 		peer.socket.destroy();
 	}, 500)
