@@ -4,6 +4,7 @@ import * as network from './network'
 import * as message from './message'
 import {Peer} from './peer'
 import {validateTx} from './transactions'
+import {validateBlock} from './blocks'
 import {objectToId} from './utils'
 import level from 'level-ts'
 const canonicalize = require('canonicalize')
@@ -124,7 +125,6 @@ export async function receiveObject(object:any, sender:Peer){
 				objectIsValid=true
 				console.log("Transaction is valid")
 			} catch(error){
-				network.reportError(sender, error as string)
 				console.log(error);
 				network.reportError(sender, error as string)
 			}
@@ -136,6 +136,7 @@ export async function receiveObject(object:any, sender:Peer){
 				console.log("Block is valid")
 			} catch(error){
 				console.log(error);
+				network.reportError(sender, error as string)
 			}
 		}
 		if(objectIsValid){

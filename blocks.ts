@@ -9,7 +9,11 @@ const BLOCK_REWARDS = 50000000000000
 const BLOCK_TARGET = "00000002af000000000000000000000000000000000000000000000000000000"
 const GENESIS_ID = "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
 
-// What to do if prev block is not available? - Deal with in chain validation
+const TX_DOWNLOAD_TIMEOUT = 10000
+
+// TODO: Avoid race condition in waiting for transactions.
+// TODO: Update node on Vultr
+// TODO: Recursively request and validate parent block
 
 export async function validateBlock(block: BlockObjectType){
 	if(block.T !== BLOCK_TARGET)
@@ -20,8 +24,8 @@ export async function validateBlock(block: BlockObjectType){
 	if(!isSmallerHex(blockid, BLOCK_TARGET))
 		throw "Invalid block: Block hash does not match target: "+blockid
 	// previd test may not be needed once we do chain validation where we look for the block with previd
-	if(! /[0-9a-f]{64}/.test(block.previd))
-		throw "Invalid block: previd is not a 256-bit hex string: "+block.previd
+	// if(! /[0-9a-f]{64}/.test(block.previd))
+	// 	throw "Invalid block: previd is not a 256-bit hex string: "+block.previd
 	if(!Number.isInteger(block.created) || block.created < 0)
 		throw "Invalid block: Timestamp is not a non-negative integer"
 	if(typeof block.miner!=="undefined" && ! /[ -~]{1,128}/.test(block.miner))
@@ -44,18 +48,34 @@ export async function validateBlock(block: BlockObjectType){
 			throw "Could not validate block: could not find prev block's UTXO set"
 		}
 	}
+	// Check if transactions exist in the database, if not request them.
+	let txs: any[] = []
+	let promises: Promise<any>[] = []
 	for(let i=0; i<block.txids.length; i++){
-		let tx
+		// let tx
 		try{
-			tx = await getObject(block.txids[i])
+			txs[i] = await getObject(block.txids[i])
 		} catch(error){
-			try{
-				console.log("Transaction "+i+" with id "+block.txids[i]+" not found in database. Requesting network...")
-				tx = await requestAndWaitForObject(block.txids[i], 10000)
-			} catch(error){
-				throw "Invalid block: Transaction "+i+" with id "+block.txids[i]+" not found in network."
-			}
+			console.log("Transaction "+i+" with id "+block.txids[i]+" not found in database. Requesting network...")
+			promises.push(requestAndWaitForObject(block.txids[i], TX_DOWNLOAD_TIMEOUT)
+				.then((value) => {
+					txs[i] = value
+				})
+				.catch((error) => {
+					throw "Invalid block: Transaction "+i+" with id "+block.txids[i]+" not found in network."
+				})
+			)
 		}
+	}
+	try{
+		await Promise.all(promises)
+	} catch(error){
+		throw error
+	}
+
+
+	for(let i=0; i<block.txids.length; i++){
+		let tx = txs[i]
 		if(CoinbaseObject.guard(tx)){
 			if(i!==0)
 				throw "Invalid block: Found coinbase transaction at index "+i+", expected coinbase only at index 0"
