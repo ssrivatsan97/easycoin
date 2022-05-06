@@ -9,6 +9,8 @@ import {objectToId} from './utils'
 import level from 'level-ts'
 const canonicalize = require('canonicalize')
 
+// TODO: Create two spearate databases, blockDB and transactionDB/mempoolDB
+
 const Outpoint = Record({
 	txid: String,
 	index: Number
@@ -65,6 +67,10 @@ export async function getObject(objectid: string){
 	}
 }
 
+export async function doesObjectExist(objectid: string){
+	return await objectDB.exists(objectid)
+}
+
 function requestObject(objectid: string, peer:Peer){
 	const getObjectMessage = message.encodeMessage({type:"getobject",objectid:objectid});
 	network.sendMessage(getObjectMessage,peer);
@@ -85,18 +91,18 @@ export function requestAllObject(objectid: string){
 
 // Function to callback (resolve function) on receiving a certain object
 // NOTE: It will send back unvalidated object!
-let objectWaiters: {[objectid: string]: ((obj: any) => void)[]} = {}
+let objectWaiters: {[objectid: string]: {resolve: ((obj: any) => void), reject: ((obj: any) => void)}[]} = {}
 
 export function requestAndWaitForObject(objectid: string, timeout: number){
 	requestAllObject(objectid)
 	return new Promise((resolve,reject) => {
 		if(typeof objectWaiters[objectid] === "undefined"){
-			objectWaiters[objectid] = [resolve]
+			objectWaiters[objectid] = [{resolve, reject}]
 		} else{
-			objectWaiters[objectid].push(resolve)
+			objectWaiters[objectid].push({resolve, reject})
 		}
 		setTimeout(() => {
-			reject()
+			reject("Object with id "+objectid+" not found in network")
 		}, timeout)
 		requestAllObject(objectid)
 	})
@@ -109,14 +115,8 @@ export function advertizeObject(objectid:string, sender:Peer){
 
 export async function receiveObject(object:any, sender:Peer){
 	const objectid = objectToId(object);
+	let invalidError = ""
 	if (!(await objectDB.exists(objectid))){
-		if (typeof objectWaiters[objectid] !== "undefined"){ // Added in HW 3
-			let callbacks = objectWaiters[objectid]
-			delete objectWaiters[objectid]
-			for (let callback of callbacks){
-				callback(object)
-			}
-		}
 		let objectIsValid = false;
 		if (TxObject.guard(object)){
 			console.log("Validating transaction...")
@@ -126,6 +126,7 @@ export async function receiveObject(object:any, sender:Peer){
 				console.log("Transaction is valid")
 			} catch(error){
 				console.log(error);
+				invalidError = error as string
 				network.reportError(sender, error as string)
 			}
 		} else if (BlockObject.guard(object)){ // This case added in HW 3
@@ -136,6 +137,7 @@ export async function receiveObject(object:any, sender:Peer){
 				console.log("Block is valid")
 			} catch(error){
 				console.log(error);
+				invalidError = error as string
 				network.reportError(sender, error as string)
 			}
 		}
@@ -143,8 +145,30 @@ export async function receiveObject(object:any, sender:Peer){
 			await objectDB.put(objectid, canonicalize(object));
 			advertizeObject(objectid,sender);
 		}
-	} else
+		if (typeof objectWaiters[objectid] !== "undefined"){ // Added in HW 3
+			if (objectIsValid) {
+				let resolves = objectWaiters[objectid].map(waiter => waiter.resolve)
+				for (let resolve of resolves){
+					resolve(object)
+				}
+			} else {
+				let rejects = objectWaiters[objectid].map(waiter => waiter.reject)
+				for (let reject of rejects){
+					reject("Object with id "+objectid+" was invalid: "+invalidError)
+				}
+			}
+			delete objectWaiters[objectid]
+		}
+	} else{
 		console.log("Object already exists with objectid "+objectid)
+		if (typeof objectWaiters[objectid] !== "undefined"){ // Added in HW 3
+			let resolves = objectWaiters[objectid].map(waiter => waiter.resolve)
+			for (let resolve of resolves){
+				resolve(object)
+			}
+			delete objectWaiters[objectid]
+		}
+	}
 }
 
 export async function sendObject(objectid:string, peer:Peer){

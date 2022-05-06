@@ -146,6 +146,7 @@ export async function connectAsClient(){
 		}
 	}
 	await peerDB.put('discoveredPeerList', discoveredPeerList)
+	requestChainTip() // Added in HW 4
 }
 
 export function sendMessage(data:string, peer:Peer){
@@ -211,6 +212,16 @@ export function closeDueToError(peer:Peer, error:string){
 	setTimeout(() => {
 		peer.socket.destroy();
 	}, 500)
+}
+
+// Added in HW 4
+export function sendChainTip(peer: Peer, blockid: string){
+	sendMessage(Message.encodeMessage({type:"chaintip", blockid:blockid}), peer)
+}
+
+// Added in HW 4
+export function requestChainTip(){
+	broadcastMessage(Message.encodeMessage({type:"getchaintip"}))
 }
 
 // TODO: Figure out @types/net package

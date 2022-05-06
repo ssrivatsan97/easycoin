@@ -2,6 +2,7 @@ import { Boolean, Number, String, Literal, Array, Tuple, Record, Union, Static, 
 import {Peer} from './peer'
 import * as network from './network'
 import {Object,receiveObject,sendObject,requestObjectIfNotPresent} from './objects' // added in HW 2
+import {getLongestChainTip, receiveChainTip} from './chains'
 const canonicalize = require('canonicalize')
 
 const invalidMsgTimeout = 1000;
@@ -140,6 +141,20 @@ export class messageHandler{
 					console.log(msgObject.object);
 					receiveObject(msgObject.object,this.peer);
 					break;
+
+				// next 2 cases added in HW 4
+				case 'getchaintip':
+					console.log("Peer "+this.peer.name+" requested for chain tip")
+					let blockid = getLongestChainTip()
+					if (blockid !== null){
+						network.sendChainTip(this.peer, blockid)
+					}
+					break
+
+				case 'chaintip':
+					console.log("Peer "+this.peer.name+" sent chaintip "+msgObject.blockid)
+					receiveChainTip(msgObject.blockid)
+					break
 			}
 		});
 	}
