@@ -10,6 +10,7 @@ import level from 'level-ts'
 const canonicalize = require('canonicalize')
 
 // TODO: Create two spearate databases, blockDB and transactionDB/mempoolDB
+// TODO: Keep a universal parameters file
 
 const Outpoint = Record({
 	txid: String,

@@ -44,15 +44,18 @@ export async function validateBlock(block: BlockObjectType){
 	if(! /[0-9a-f]{64}/.test(block.nonce))
 		throw "Invalid block: Nonce is not a 256-bit hex string: "+block.nonce
 	const blockid = objectToId(block)
-	if(!isSmallerHex(blockid, BLOCK_TARGET))
-		throw "Invalid block: Block hash does not match target: "+blockid
-	// previd test may not be needed once we do chain validation where we look for the block with previd
+	// if(!isSmallerHex(blockid, BLOCK_TARGET))
+		// throw "Invalid block: Block hash does not match target: "+blockid
 	if(block.previd !== null && !/[0-9a-f]{64}/.test(block.previd))
 		throw "Invalid block: previd is not a 256-bit hex string: "+block.previd
 	if(block.previd === null && blockid !== GENESIS_ID)
 		throw "Incorrect genesis block"
 	if(!Number.isInteger(block.created) || block.created < 0)
 		throw "Invalid block: Timestamp is not a non-negative integer"
+	let currentTime = Date.now()
+	console.log("Verification time "+currentTime)
+	if(block.created > currentTime)
+		throw "Invalid block: Timestamp "+block.created+" is in the future (current timestamp "+currentTime+")"
 
 	// Retrieve previous blocks and validate them
 	let prevBlock

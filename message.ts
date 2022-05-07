@@ -43,7 +43,26 @@ const ObjectMessage = Record({
 	object: Object
 })
 
-const MessageObject = Union(HelloMessage, PeersMessage, GetPeersMessage, ErrorMessage, GetObjectMessage, IHaveObjectMessage, ObjectMessage); // changed in HW 2
+// Following types added in HW 4
+const GetChainTipMessage = Record({
+	type: Literal('getchaintip')
+})
+
+const ChainTipMessage = Record({
+	type: Literal('chaintip'),
+	blockid: String
+})
+
+const GetMempoolMessage = Record({
+	type: Literal('getmempool')
+})
+
+const MempoolMessage = Record({
+	type: Literal('mempool'),
+	blockid: Array(String)
+})
+
+const MessageObject = Union(HelloMessage, PeersMessage, GetPeersMessage, ErrorMessage, GetObjectMessage, IHaveObjectMessage, ObjectMessage, GetChainTipMessage, ChainTipMessage, GetMempoolMessage, MempoolMessage); // changed in HW 4
 
 export function parseMessage(msg: string){
 	let parsedMessage 
@@ -145,15 +164,22 @@ export class messageHandler{
 				// next 2 cases added in HW 4
 				case 'getchaintip':
 					console.log("Peer "+this.peer.name+" requested for chain tip")
-					let blockid = getLongestChainTip()
-					if (blockid !== null){
+					getLongestChainTip().then((blockid) => {
 						network.sendChainTip(this.peer, blockid)
-					}
+					})
 					break
 
 				case 'chaintip':
 					console.log("Peer "+this.peer.name+" sent chaintip "+msgObject.blockid)
 					receiveChainTip(msgObject.blockid)
+					break
+
+				case 'getmempool':
+					network.reportError(this.peer, "Getmempool is currently unsupported")
+					break
+
+				case 'mempool':
+					network.reportError(this.peer, "Mempool is currently unsupported")
 					break
 			}
 		});

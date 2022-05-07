@@ -5,42 +5,67 @@ import {validateBlock, getState, doesStateExist} from './blocks'
 const DOWNLOAD_TIMEOUT = 5000
 
 // longest chain state
-let longestChainTip: string|null = null
-let longestChainHeight = 0
+// Databse contains 2 keys, longestChainTip and longestChainHeight
+// Initial values are genesis id and 0 respectively
+const chainDB = new level('./chainDatabase')
+// let longestChainTip: string = "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
+// let longestChainHeight = 0
 
-export async function updateLongestChain(chaintip: string){
+export async function updateLongestChain(blockid: string){
 	// Assume that this function is only called with validated blocks
 	let height
 	try {
-		height = (await getState(chaintip)).height
+		height = (await getState(blockid)).height
 	} catch(error){
-		console.log("New chaintip "+chaintip+" not found in state database")
+		console.log("New chaintip "+blockid+" not found in state database")
 		return
 	}
+	let longestChainHeight = await getLongestChainHeight()
 	if (height > longestChainHeight){
-		longestChainHeight = height
-		longestChainTip = chaintip
+		await setLongestChain(blockid, height)
+		// longestChainHeight = height
+		// longestChainTip = blockid
+		console.log("Update longest chain to "+blockid+", height = "+height)
 	}
 }
 
-export function getLongestChainTip(){
-	return longestChainTip
+export async function getLongestChainTip(){
+	try{
+		return await chainDB.get("longestChainTip")
+	} catch(error){
+		await chainDB.put("longestChainTip","00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e")
+		await chainDB.put("longestChainHeight",0)
+		return "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
+	}
+	// return longestChainTip
 }
 
-export function getLongestChainHeight(){
-	return longestChainHeight
+export async function getLongestChainHeight(){
+	try{
+		return await chainDB.get("longestChainHeight")
+	} catch(error){
+		await chainDB.put("longestChainTip","00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e")
+		await chainDB.put("longestChainHeight",0)
+		return 0
+	}
+	// return longestChainHeight
 }
 
-export async function receiveChainTip(chaintip: string){
-	if (!await doesStateExist(chaintip)){
-		console.log("Chain id "+chaintip+" not found in state database. Requesting network...")
+async function setLongestChain(blockid: string, height: number){
+	await chainDB.put("longestChainHeight", height)
+	await chainDB.put("longestChainTip", blockid)
+}
+
+export async function receiveChainTip(blockid: string){
+	if (!await doesStateExist(blockid)){
+		console.log("Chain with blockid "+blockid+" not found in state database. Requesting network...")
 		try{
-			await requestAndWaitForObject(chaintip, DOWNLOAD_TIMEOUT)
+			await requestAndWaitForObject(blockid, DOWNLOAD_TIMEOUT)
 		} catch(error){
-			console.log("Invalid chain "+chaintip+": "+error)
+			console.log("Invalid chain "+blockid+": "+error)
 			return
 		}
 	} else{
-		updateLongestChain(chaintip)
+		updateLongestChain(blockid)
 	}
 }
