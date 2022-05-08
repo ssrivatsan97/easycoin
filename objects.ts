@@ -8,9 +8,7 @@ import {validateBlock} from './blocks'
 import {objectToId} from './utils'
 import level from 'level-ts'
 const canonicalize = require('canonicalize')
-
-// TODO: Create two spearate databases, blockDB and transactionDB/mempoolDB
-// TODO: Keep a universal parameters file
+import {GENESIS_ID, GENESIS_BLOCK} from './constants'
 
 const Outpoint = Record({
 	txid: String,
@@ -58,8 +56,12 @@ export type ObjectType = Static<typeof Object>
 
 const objectDB = new level('./objectDatabase');
 
+export async function initObjectDB(){
+	await objectDB.put(GENESIS_ID, GENESIS_BLOCK)
+}
+
 export async function getObject(objectid: string){
-	if (await objectDB.exists(objectid)){
+	if (await doesObjectExist(objectid)){
 		const obj = JSON.parse(await objectDB.get(objectid));
 		return obj;
 	} 
@@ -78,7 +80,7 @@ function requestObject(objectid: string, peer:Peer){
 }
 
 export async function requestObjectIfNotPresent(objectid: string, peer:Peer){
-	if (!(await objectDB.exists(objectid))){
+	if (!(await doesObjectExist(objectid))){
 		requestObject(objectid,peer)
 	}
 	else
@@ -117,7 +119,7 @@ export function advertizeObject(objectid:string, sender:Peer){
 export async function receiveObject(object:any, sender:Peer){
 	const objectid = objectToId(object);
 	let invalidError = ""
-	if (!(await objectDB.exists(objectid))){
+	if (!(await doesObjectExist(objectid))){
 		let objectIsValid = false;
 		if (TxObject.guard(object)){
 			console.log("Validating transaction...")
@@ -173,11 +175,11 @@ export async function receiveObject(object:any, sender:Peer){
 }
 
 export async function sendObject(objectid:string, peer:Peer){
-	if (await objectDB.exists(objectid)){
-		const obj = JSON.parse(await objectDB.get(objectid));
+	try{
+		const obj = getObject(objectid);
 		const objectMessage = message.encodeMessage({type:"object",object:obj});
 		network.sendMessage(objectMessage,peer);
-	} else {
-		throw "Object not found in database";
+	} catch(error) {
+		throw error;
 	}
 }

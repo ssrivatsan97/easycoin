@@ -4,8 +4,7 @@ import * as network from './network'
 import {Object,receiveObject,sendObject,requestObjectIfNotPresent} from './objects' // added in HW 2
 import {getLongestChainTip, receiveChainTip} from './chains'
 const canonicalize = require('canonicalize')
-
-const invalidMsgTimeout = 1000;
+import {INVALID_MSG_TIMEOUT} from './constants'
 
 const HelloMessage = Record({
 	type: Literal('hello'),
@@ -108,7 +107,7 @@ export class messageHandler{
 				if(!this.waiting){
 					this.myTimeout = setTimeout(() => {
 						network.closeDueToError(this.peer, "Invalid message: "+msgItem+". Details: "+e)
-					}, invalidMsgTimeout);
+					}, INVALID_MSG_TIMEOUT);
 					this.waiting = true;
 				}
 				return;

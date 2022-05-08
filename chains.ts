@@ -1,8 +1,7 @@
 import level from 'level-ts'
 import {BlockObject, BlockObjectType, requestAndWaitForObject, getObject} from './objects'
 import {validateBlock, getState, doesStateExist} from './blocks'
-
-const DOWNLOAD_TIMEOUT = 5000
+import {DOWNLOAD_TIMEOUT, GENESIS_ID} from './constants'
 
 // longest chain state
 // Databse contains 2 keys, longestChainTip and longestChainHeight
@@ -33,9 +32,9 @@ export async function getLongestChainTip(){
 	try{
 		return await chainDB.get("longestChainTip")
 	} catch(error){
-		await chainDB.put("longestChainTip","00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e")
+		await chainDB.put("longestChainTip",GENESIS_ID)
 		await chainDB.put("longestChainHeight",0)
-		return "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
+		return GENESIS_ID
 	}
 	// return longestChainTip
 }
@@ -44,7 +43,7 @@ export async function getLongestChainHeight(){
 	try{
 		return await chainDB.get("longestChainHeight")
 	} catch(error){
-		await chainDB.put("longestChainTip","00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e")
+		await chainDB.put("longestChainTip",GENESIS_ID)
 		await chainDB.put("longestChainHeight",0)
 		return 0
 	}

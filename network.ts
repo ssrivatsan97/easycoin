@@ -6,17 +6,7 @@ import {Peer} from './peer'
 import level from 'level-ts'
 import {parseIpPort, validateIpPort} from './utils'
 const canonicalize = require('canonicalize')
-
-const config = {
-	"port" : 18018,
-	"serverTimeoutDuration" : 300000,
-	"socketTimeoutDuration" : 60000,
-	"myName" : "EasyCoin",
-	"bootstrapName" : "Bootstrap",
-	"bootstrapAddress" : "149.28.220.241",
-	"bootstrapPort" : 18020,
-	"hardcodedPeerList" : ["localhost:18020", "149.28.220.241:18018"]
-}
+import {config} from './constants'
 
 const peerDB = new level('./discoveredPeerList');
 

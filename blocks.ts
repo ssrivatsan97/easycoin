@@ -7,12 +7,7 @@ import {CoinbaseObject, CoinbaseObjectType, GeneralTxObject, getObject, doesObje
 import {validateTx, inputValue, outputValue} from './transactions'
 import {UTXO, UTXOType} from './utxo'
 import {updateLongestChain} from './chains'
-
-const BLOCK_REWARDS = 50000000000000
-const BLOCK_TARGET = "00000002af000000000000000000000000000000000000000000000000000000"
-const GENESIS_ID = "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
-
-const DOWNLOAD_TIMEOUT = 5000
+import {BLOCK_REWARDS, BLOCK_TARGET, GENESIS_ID, DOWNLOAD_TIMEOUT} from './constants'
 
 const BlockState = Record({
 	height: RNumber,
@@ -23,6 +18,10 @@ type BlockStateType = Static<typeof BlockState>
 const stateDB = new level('./utxoDatabase')
 // Database will store blockid : {height, UTXOset}
 // This is naive snapshot of state at each block
+
+export async function initStateDB(){
+	await stateDB.put(GENESIS_ID, {height:0, state:[]})
+}
 
 export async function setState (blockid: string, state: BlockStateType) {
 	if (!await stateDB.exists(blockid)) {
