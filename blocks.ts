@@ -43,8 +43,8 @@ export async function validateBlock(block: BlockObjectType){
 	if(! /[0-9a-f]{64}/.test(block.nonce))
 		throw "Invalid block: Nonce is not a 256-bit hex string: "+block.nonce
 	const blockid = objectToId(block)
-	// if(!isSmallerHex(blockid, BLOCK_TARGET))
-		// throw "Invalid block: Block hash does not match target: "+blockid
+	if(!isSmallerHex(blockid, BLOCK_TARGET))
+		throw "Invalid block: Block hash does not match target: "+blockid
 	if(block.previd !== null && !/[0-9a-f]{64}/.test(block.previd))
 		throw "Invalid block: previd is not a 256-bit hex string: "+block.previd
 	if(block.previd === null && blockid !== GENESIS_ID)
