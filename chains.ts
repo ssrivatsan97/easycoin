@@ -10,6 +10,11 @@ const chainDB = new level('./chainDatabase')
 // let longestChainTip: string = "00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e"
 // let longestChainHeight = 0
 
+export async function initChainDB(){
+	await chainDB.put("longestChainTip",GENESIS_ID)
+	await chainDB.put("longestChainHeight",0)
+}
+
 export async function updateLongestChain(blockid: string){
 	// Assume that this function is only called with validated blocks
 	let height
@@ -32,9 +37,7 @@ export async function getLongestChainTip(){
 	try{
 		return await chainDB.get("longestChainTip")
 	} catch(error){
-		await chainDB.put("longestChainTip",GENESIS_ID)
-		await chainDB.put("longestChainHeight",0)
-		return GENESIS_ID
+		console.log("Error: could not read longestChainTip from chain DB")
 	}
 	// return longestChainTip
 }
@@ -43,9 +46,7 @@ export async function getLongestChainHeight(){
 	try{
 		return await chainDB.get("longestChainHeight")
 	} catch(error){
-		await chainDB.put("longestChainTip",GENESIS_ID)
-		await chainDB.put("longestChainHeight",0)
-		return 0
+		console.log("Error: could not read longestChainHeight from chain DB")
 	}
 	// return longestChainHeight
 }

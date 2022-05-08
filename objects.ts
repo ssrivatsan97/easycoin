@@ -57,7 +57,7 @@ export type ObjectType = Static<typeof Object>
 const objectDB = new level('./objectDatabase');
 
 export async function initObjectDB(){
-	await objectDB.put(GENESIS_ID, GENESIS_BLOCK)
+	await objectDB.put(GENESIS_ID, canonicalize(GENESIS_BLOCK))
 }
 
 export async function getObject(objectid: string){
@@ -176,7 +176,8 @@ export async function receiveObject(object:any, sender:Peer){
 
 export async function sendObject(objectid:string, peer:Peer){
 	try{
-		const obj = getObject(objectid);
+		const obj = await getObject(objectid);
+		console.log(obj)
 		const objectMessage = message.encodeMessage({type:"object",object:obj});
 		network.sendMessage(objectMessage,peer);
 	} catch(error) {
