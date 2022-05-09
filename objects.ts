@@ -177,7 +177,6 @@ export async function receiveObject(object:any, sender:Peer){
 export async function sendObject(objectid:string, peer:Peer){
 	try{
 		const obj = await getObject(objectid);
-		console.log(obj)
 		const objectMessage = message.encodeMessage({type:"object",object:obj});
 		network.sendMessage(objectMessage,peer);
 	} catch(error) {
