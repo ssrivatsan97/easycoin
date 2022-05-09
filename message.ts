@@ -2,9 +2,9 @@ import { Boolean, Number, String, Literal, Array, Tuple, Record, Union, Static, 
 import {Peer} from './peer'
 import * as network from './network'
 import {Object,receiveObject,sendObject,requestObjectIfNotPresent} from './objects' // added in HW 2
+import {getLongestChainTip, receiveChainTip} from './chains'
 const canonicalize = require('canonicalize')
-
-const invalidMsgTimeout = 1000;
+import {INVALID_MSG_TIMEOUT} from './constants'
 
 const HelloMessage = Record({
 	type: Literal('hello'),
@@ -42,7 +42,26 @@ const ObjectMessage = Record({
 	object: Object
 })
 
-const MessageObject = Union(HelloMessage, PeersMessage, GetPeersMessage, ErrorMessage, GetObjectMessage, IHaveObjectMessage, ObjectMessage); // changed in HW 2
+// Following types added in HW 4
+const GetChainTipMessage = Record({
+	type: Literal('getchaintip')
+})
+
+const ChainTipMessage = Record({
+	type: Literal('chaintip'),
+	blockid: String
+})
+
+const GetMempoolMessage = Record({
+	type: Literal('getmempool')
+})
+
+const MempoolMessage = Record({
+	type: Literal('mempool'),
+	blockid: Array(String)
+})
+
+const MessageObject = Union(HelloMessage, PeersMessage, GetPeersMessage, ErrorMessage, GetObjectMessage, IHaveObjectMessage, ObjectMessage, GetChainTipMessage, ChainTipMessage, GetMempoolMessage, MempoolMessage); // changed in HW 4
 
 export function parseMessage(msg: string){
 	let parsedMessage 
@@ -88,7 +107,7 @@ export class messageHandler{
 				if(!this.waiting){
 					this.myTimeout = setTimeout(() => {
 						network.closeDueToError(this.peer, "Invalid message: "+msgItem+". Details: "+e)
-					}, invalidMsgTimeout);
+					}, INVALID_MSG_TIMEOUT);
 					this.waiting = true;
 				}
 				return;
@@ -140,6 +159,27 @@ export class messageHandler{
 					console.log(msgObject.object);
 					receiveObject(msgObject.object,this.peer);
 					break;
+
+				// next 2 cases added in HW 4
+				case 'getchaintip':
+					console.log("Peer "+this.peer.name+" requested for chain tip")
+					getLongestChainTip().then((blockid) => {
+						network.sendChainTip(this.peer, blockid)
+					})
+					break
+
+				case 'chaintip':
+					console.log("Peer "+this.peer.name+" sent chaintip "+msgObject.blockid)
+					receiveChainTip(msgObject.blockid)
+					break
+
+				case 'getmempool':
+					network.reportError(this.peer, "Getmempool is currently unsupported")
+					break
+
+				case 'mempool':
+					network.reportError(this.peer, "Mempool is currently unsupported")
+					break
 			}
 		});
 	}

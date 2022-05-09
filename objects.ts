@@ -8,6 +8,7 @@ import {validateBlock} from './blocks'
 import {objectToId} from './utils'
 import level from 'level-ts'
 const canonicalize = require('canonicalize')
+import {GENESIS_ID, GENESIS_BLOCK} from './constants'
 
 const Outpoint = Record({
 	txid: String,
@@ -55,8 +56,12 @@ export type ObjectType = Static<typeof Object>
 
 const objectDB = new level('./objectDatabase');
 
+export async function initObjectDB(){
+	await objectDB.put(GENESIS_ID, canonicalize(GENESIS_BLOCK))
+}
+
 export async function getObject(objectid: string){
-	if (await objectDB.exists(objectid)){
+	if (await doesObjectExist(objectid)){
 		const obj = JSON.parse(await objectDB.get(objectid));
 		return obj;
 	} 
@@ -65,13 +70,17 @@ export async function getObject(objectid: string){
 	}
 }
 
+export async function doesObjectExist(objectid: string){
+	return await objectDB.exists(objectid)
+}
+
 function requestObject(objectid: string, peer:Peer){
 	const getObjectMessage = message.encodeMessage({type:"getobject",objectid:objectid});
 	network.sendMessage(getObjectMessage,peer);
 }
 
 export async function requestObjectIfNotPresent(objectid: string, peer:Peer){
-	if (!(await objectDB.exists(objectid))){
+	if (!(await doesObjectExist(objectid))){
 		requestObject(objectid,peer)
 	}
 	else
@@ -85,18 +94,18 @@ export function requestAllObject(objectid: string){
 
 // Function to callback (resolve function) on receiving a certain object
 // NOTE: It will send back unvalidated object!
-let objectWaiters: {[objectid: string]: ((obj: any) => void)[]} = {}
+let objectWaiters: {[objectid: string]: {resolve: ((obj: any) => void), reject: ((obj: any) => void)}[]} = {}
 
 export function requestAndWaitForObject(objectid: string, timeout: number){
 	requestAllObject(objectid)
 	return new Promise((resolve,reject) => {
 		if(typeof objectWaiters[objectid] === "undefined"){
-			objectWaiters[objectid] = [resolve]
+			objectWaiters[objectid] = [{resolve, reject}]
 		} else{
-			objectWaiters[objectid].push(resolve)
+			objectWaiters[objectid].push({resolve, reject})
 		}
 		setTimeout(() => {
-			reject()
+			reject("Object with id "+objectid+" not found in network")
 		}, timeout)
 		requestAllObject(objectid)
 	})
@@ -109,14 +118,8 @@ export function advertizeObject(objectid:string, sender:Peer){
 
 export async function receiveObject(object:any, sender:Peer){
 	const objectid = objectToId(object);
-	if (!(await objectDB.exists(objectid))){
-		if (typeof objectWaiters[objectid] !== "undefined"){ // Added in HW 3
-			let callbacks = objectWaiters[objectid]
-			delete objectWaiters[objectid]
-			for (let callback of callbacks){
-				callback(object)
-			}
-		}
+	let invalidError = ""
+	if (!(await doesObjectExist(objectid))){
 		let objectIsValid = false;
 		if (TxObject.guard(object)){
 			console.log("Validating transaction...")
@@ -126,6 +129,7 @@ export async function receiveObject(object:any, sender:Peer){
 				console.log("Transaction is valid")
 			} catch(error){
 				console.log(error);
+				invalidError = error as string
 				network.reportError(sender, error as string)
 			}
 		} else if (BlockObject.guard(object)){ // This case added in HW 3
@@ -136,6 +140,7 @@ export async function receiveObject(object:any, sender:Peer){
 				console.log("Block is valid")
 			} catch(error){
 				console.log(error);
+				invalidError = error as string
 				network.reportError(sender, error as string)
 			}
 		}
@@ -143,16 +148,39 @@ export async function receiveObject(object:any, sender:Peer){
 			await objectDB.put(objectid, canonicalize(object));
 			advertizeObject(objectid,sender);
 		}
-	} else
+		if (typeof objectWaiters[objectid] !== "undefined"){ // Added in HW 3
+			if (objectIsValid) {
+				let resolves = objectWaiters[objectid].map(waiter => waiter.resolve)
+				for (let resolve of resolves){
+					resolve(object)
+				}
+			} else {
+				let rejects = objectWaiters[objectid].map(waiter => waiter.reject)
+				for (let reject of rejects){
+					reject("Object with id "+objectid+" was invalid: "+invalidError)
+				}
+			}
+			delete objectWaiters[objectid]
+		}
+	} else{
 		console.log("Object already exists with objectid "+objectid)
+		if (typeof objectWaiters[objectid] !== "undefined"){ // Added in HW 3
+			let resolves = objectWaiters[objectid].map(waiter => waiter.resolve)
+			for (let resolve of resolves){
+				resolve(object)
+			}
+			delete objectWaiters[objectid]
+		}
+	}
 }
 
 export async function sendObject(objectid:string, peer:Peer){
-	if (await objectDB.exists(objectid)){
-		const obj = JSON.parse(await objectDB.get(objectid));
+	try{
+		const obj = await getObject(objectid);
+		console.log(obj)
 		const objectMessage = message.encodeMessage({type:"object",object:obj});
 		network.sendMessage(objectMessage,peer);
-	} else {
-		throw "Object not found in database";
+	} catch(error) {
+		throw error;
 	}
 }

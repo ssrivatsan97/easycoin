@@ -4,9 +4,19 @@ import * as fs from 'fs'
 import * as Message from './message'
 import {Peer} from './peer'
 import level from 'level-ts'
-import {parseIpPort, validateIpPort} from './utils'
+import {parseIpPort} from './utils'
 const canonicalize = require('canonicalize')
-import {config} from './constants'
+
+const config = {
+	"port" : 18018,
+	"serverTimeoutDuration" : 300000,
+	"socketTimeoutDuration" : 60000,
+	"myName" : "EasyCoin",
+	"bootstrapName" : "Bootstrap",
+	"bootstrapAddress" : "149.28.220.241",
+	"bootstrapPort" : 18018,
+	"hardcodedPeerList" : ["localhost:18020", "149.28.220.241:18018"]
+}
 
 const peerDB = new level('./discoveredPeerList');
 
@@ -32,7 +42,7 @@ export function connectAsServer(bootstrapMode=false){
 		console.log("Client: " + socket.remoteFamily + "address " + socket.remoteAddress + ", port " + socket.remotePort);
 		const thisPeer = new Peer("no name", socket);
 		connectedPeerList.push(thisPeer);
-		discoveredNewPeers([socket.localAddress + ":" + socket.localPort]);
+		discoveredNewPeers([socket.localAddress + ":" + socket.localPort.toString()]);
 		const msgHandler = new Message.messageHandler(thisPeer);
 
 		server.getConnections( (error,count) => {
@@ -49,20 +59,17 @@ export function connectAsServer(bootstrapMode=false){
 				console.log("Connection with "+thisPeer.name+" at "+socket.remoteAddress+" port "+socket.remotePort+" closed.");
 			else
 				console.log("Connection with "+thisPeer.name+" at "+socket.remoteAddress+" port "+socket.remotePort+" closed due to error.");
-			connectedPeerList.forEach((item,index) => {
-				if(item===thisPeer)
-					connectedPeerList.splice(index,1)
-			})
+			socket.destroy();
 		});
 
 		socket.on('data', data => {
-			console.log("Data received from "+socket.remoteAddress+" port "+socket.remotePort+": "+data)
-			msgHandler.handle(data.toString());
+			try{
+				msgHandler.handle(data.toString());
+			} catch(e){
+				console.log(e);
+				socket.destroy();
+			}
 		});
-
-		socket.on('error', error => {
-			console.log("Connection error with "+socket.remoteAddress+" port "+socket.remotePort+": "+ error)
-		})
 	});
 
 	server.on('error',function(error){
@@ -71,7 +78,7 @@ export function connectAsServer(bootstrapMode=false){
 
 	server.listen(port, () => {
 		const ser_addr = server.address();
-		console.log("Server: " + ser_addr);
+		console.log("Server: " + ser_addr.family + " address " + ser_addr.address + ", port " + ser_addr.port);
 		console.log("Listening for connections");
 	});
 }
@@ -89,61 +96,51 @@ export async function connectAsClient(){
 	{
 		const peerAddress = discoveredPeerList[i]
 		const client = new net.Socket();
-		let peer;
-		let msgHandler;
+		const peer = new Peer("no name", client);
+		connectedPeerList.push(peer);
+		const msgHandler = new Message.messageHandler(peer);
 
 		let address, port
 		try{
 			[address, port] = parseIpPort(peerAddress)
 		} catch(error){
 			console.log("Peer address " + peerAddress + " is invalid: " + error)
-			discoveredPeerList.splice(i--,1)
-			console.log("Removing " + peerAddress + " from discovered peers list.")
 		}
 		if(address!==undefined && port!==undefined){
 			client.connect({port:port, host:address}, () => {
 				console.log("Successfully connected to peer at "+address+" port "+port);
-				peer = new Peer("no name", client);
-				connectedPeerList.push(peer);
-				msgHandler = new Message.messageHandler(peer)
 				sayHello(peer,myName);
 				askForPeers(peer);
 			});
 
 			client.on('error', (error) => {
-				console.log("Connection error with "+client.remoteAddress+" port "+client.remotePort+": "+ error)
-				console.log("Removing "+peerAddress+" from discovered peer list.")
-				discoveredPeerList.splice(i--,1)
-				console.log("Removing " + peerAddress + " from discovered peers list.")
+				console.log('Error: ' + error);
 			});
 
 			client.on('data', data => {
-				console.log("Data received from "+client.remoteAddress+" port "+client.remotePort+": "+data)
-				msgHandler.handle(data.toString());
-			});
+					try{
+						msgHandler.handle(data.toString());
+					} catch(e){
+						console.log("Invalid message from "+peer.name+" at "+peer.socket.remoteAddress);
+						console.log(e);
+						client.destroy();
+					}
+				});
 
-			client.on('close', (hadError) => {
-				if(!hadError)
-					console.log("Connection with "+client.remoteAddress+" port "+client.remotePort+" closed.");
-				else
-					console.log("Connection with "+client.remoteAddress+" port "+client.remotePort+" closed due to error.");
-				connectedPeerList.forEach((item,index) => {
-					if(item===peer)
-						connectedPeerList.splice(index,1)
-				})
+
+			client.on('end', () => {
+				console.log(client.remoteAddress+" port "+client.remotePort+" closed their connection.");
 				// Need to connect to someone else!
 			});
 		}
 	}
-	await peerDB.put('discoveredPeerList', discoveredPeerList)
-	requestChainTip() // Added in HW 4
 }
 
 export function sendMessage(data:string, peer:Peer){
 	const socket = peer.socket
 	if(socket !== undefined)
 		socket.write(data);
-	console.log("Sent: "+data+" to "+socket.remoteAddress+":"+socket.remotePort)
+	console.log("Sent: "+data)
 }
 
 export function broadcastMessage(data:string){
@@ -152,15 +149,8 @@ export function broadcastMessage(data:string){
 	});
 }
 
-export function broadcastMessageExceptSender(data:string, sender:Peer){
-	connectedPeerList.forEach((peer,index) => {
-		if(peer!==sender)
-			sendMessage(data,peer);
-	});
-}
-
 export function sayHello(peer:Peer, myName:string){
-	sendMessage(Message.encodeMessage({type:'hello',version:'0.8.0',agent:myName}), peer);
+	sendMessage(Message.encodeMessage({type:'hello',version:'0.7.0',agent:myName}), peer);
 }
 
 export function askForPeers(peer:Peer){
@@ -170,9 +160,8 @@ export function askForPeers(peer:Peer){
 export async function discoveredNewPeers(peerset: string[]){
 	const discoveredPeerList = await readDiscoveredPeers();
 	peerset.forEach((item,index) => {
-		if(!discoveredPeerList.includes(item) && validateIpPort(item)){
+		if(!discoveredPeerList.includes(item))
 			discoveredPeerList.push(item);
-		}
 	});
 	await peerDB.put('discoveredPeerList', discoveredPeerList);
 }
@@ -192,26 +181,9 @@ export async function readDiscoveredPeers(){
 	}
 }
 
-export function reportError(peer:Peer, error:string){
-	console.log(error);
-	sendMessage(Message.encodeMessage({type:"error", error:error}), peer)
-}
-
 export function closeDueToError(peer:Peer, error:string){
-	reportError(peer, error)
-	setTimeout(() => {
-		peer.socket.destroy();
-	}, 500)
-}
-
-// Added in HW 4
-export function sendChainTip(peer: Peer, blockid: string){
-	sendMessage(Message.encodeMessage({type:"chaintip", blockid:blockid}), peer)
-}
-
-// Added in HW 4
-export function requestChainTip(){
-	broadcastMessage(Message.encodeMessage({type:"getchaintip"}))
+	console.log(error);
+	peer.socket.destroy();
 }
 
 // TODO: Figure out @types/net package
