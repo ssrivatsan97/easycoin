@@ -1,4 +1,8 @@
 import * as network from './network';
+import {initDBs} from './init'
 
-network.connectAsClient();
-network.connectAsServer();
+initDBs().then(result => {
+	return network.connectAsClient();
+}).then(result => {
+	network.connectAsServer();
+})
