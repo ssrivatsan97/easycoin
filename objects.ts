@@ -76,6 +76,7 @@ export async function doesObjectExist(objectid: string){
 
 function requestObject(objectid: string, peer:Peer){
 	const getObjectMessage = message.encodeMessage({type:"getobject",objectid:objectid});
+	console.log("Requesting peer "+peer.name+" for object "+objectid)
 	network.sendMessage(getObjectMessage,peer);
 }
 
@@ -89,6 +90,7 @@ export async function requestObjectIfNotPresent(objectid: string, peer:Peer){
 
 export function requestAllObject(objectid: string){
 	const getObjectMessage = message.encodeMessage({type:"getobject",objectid:objectid});
+	console.log("Requesting network for object "+objectid)
 	network.broadcastMessage(getObjectMessage);
 }
 
@@ -113,6 +115,7 @@ export function requestAndWaitForObject(objectid: string, timeout: number){
 
 export function advertizeObject(objectid:string, sender:Peer){
 	const iHaveObjectMessage = message.encodeMessage({type:"ihaveobject",objectid:objectid});
+	console.log("Gossip I have object "+objectid+" to all peers")
 	network.broadcastMessageExceptSender(iHaveObjectMessage,sender);
 }
 
@@ -178,6 +181,7 @@ export async function sendObject(objectid:string, peer:Peer){
 	try{
 		const obj = await getObject(objectid);
 		const objectMessage = message.encodeMessage({type:"object",object:obj});
+		console.log("Sending object "+objectid+" to peer "+peer.name)
 		network.sendMessage(objectMessage,peer);
 	} catch(error) {
 		throw error;

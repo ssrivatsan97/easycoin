@@ -60,7 +60,7 @@ export async function receiveChainTip(blockid: string){
 	if (!await doesStateExist(blockid)){
 		console.log("Chain with blockid "+blockid+" not found in state database. Requesting network...")
 		try{
-			await requestAndWaitForObject(blockid, DOWNLOAD_TIMEOUT)
+			await requestAndWaitForObject(blockid, DOWNLOAD_TIMEOUT) // This will receive block, validate and update longest chain
 		} catch(error){
 			console.log("Invalid chain "+blockid+": "+error)
 			return
