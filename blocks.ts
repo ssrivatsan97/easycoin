@@ -52,7 +52,6 @@ export async function validateBlock(block: BlockObjectType){
 	if(!Number.isInteger(block.created) || block.created < 0)
 		throw "Invalid block: Timestamp is not a non-negative integer"
 	let currentTime = Math.floor(Date.now() / 1000)
-	console.log("Verification time "+currentTime)
 	if(block.created > currentTime)
 		throw "Invalid block: Timestamp "+block.created+" is in the future (current timestamp "+currentTime+")"
 
@@ -73,10 +72,10 @@ export async function validateBlock(block: BlockObjectType){
 		throw "Invalid block: Timestamp "+block.created+" not later than parent block's timestamp "+prevBlock.created
 	}
 	
-	// if(typeof block.miner!=="undefined" && ! /[ -~]{1,128}/.test(block.miner))
-	// 	throw "Invalid block: Only ASCII-printable strings up to 128 characters accepted in miner"
-	// if(typeof block.note!=="undefined" && ! /[ -~]{1,128}/.test(block.note))
-	// 	throw "Invalid block: Only ASCII-printable strings up to 128 characters accepted in note"
+	if(typeof block.miner!=="undefined" && ! /[ -~]{1,128}/.test(block.miner))
+		throw "Invalid block: Only ASCII-printable strings up to 128 characters accepted in miner"
+	if(typeof block.note!=="undefined" && ! /[ -~]{1,128}/.test(block.note))
+		throw "Invalid block: Only ASCII-printable strings up to 128 characters accepted in note"
 	
 	let hasCoinbase = false
 	let coinbase: any
