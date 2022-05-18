@@ -3,12 +3,10 @@ import {Socket} from 'net'
 import * as fs from 'fs'
 import * as Message from './message'
 import {Peer} from './peer'
-import level from 'level-ts'
 import {parseIpPort, validateIpPort} from './utils'
 const canonicalize = require('canonicalize')
 import {config} from './constants'
-
-const peerDB = new level('./discoveredPeerList');
+import * as DB from './database'
 
 const connectedPeerList: Peer[] = [];
 
@@ -137,7 +135,7 @@ export async function connectAsClient(){
 			});
 		}
 	}
-	await peerDB.put('discoveredPeerList', discoveredPeerList)
+	await writeDiscoveredPeers(discoveredPeerList)
 	requestChainTip() // Added in HW 4
 }
 
@@ -166,6 +164,19 @@ export function sayHello(peer:Peer, myName:string){
 	sendMessage(Message.encodeMessage({type:'hello',version:'0.8.0',agent:myName}), peer);
 }
 
+export async function readDiscoveredPeers(){
+	if(await DB.exists('discoveredPeerList'))
+		return await DB.get('discoveredPeerList');
+	else {
+		await DB.put('discoveredPeerList',[]);
+		return [];
+	}
+}
+
+export async function writeDiscoveredPeers(discoveredPeerList: string[]){
+	await DB.put('discoveredPeerList', discoveredPeerList)
+}
+
 export function askForPeers(peer:Peer){
 	console.log("Asking peer "+peer.name+" for known peers")
 	sendMessage(Message.encodeMessage({type:'getpeers'}), peer);
@@ -178,7 +189,7 @@ export async function discoveredNewPeers(peerset: string[]){
 			discoveredPeerList.push(item);
 		}
 	});
-	await peerDB.put('discoveredPeerList', discoveredPeerList);
+	await writeDiscoveredPeers(discoveredPeerList);
 }
 
 export async function sendDiscoveredPeers(peer: Peer){
@@ -186,15 +197,6 @@ export async function sendDiscoveredPeers(peer: Peer){
 	const msgObject = {type:"peers", peers:discoveredPeerList};
 	console.log("Sending discovered peer list to "+peer.name)
 	sendMessage(Message.encodeMessage(msgObject), peer);
-}
-
-export async function readDiscoveredPeers(){
-	if(await peerDB.exists('discoveredPeerList'))
-		return await peerDB.get('discoveredPeerList');
-	else {
-		await peerDB.put('discoveredPeerList',[]);
-		return [];
-	}
 }
 
 export function reportError(peer:Peer, error:string){

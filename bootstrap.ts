@@ -1,6 +1,9 @@
 import * as network from './network'
-import {initDBs} from './init'
+import {initObjectDB} from './objects'
+import {initStateDB} from './blocks'
+import {initChainDB} from './chains'
 
-initDBs().then(result => {
+Promise.allSettled([initObjectDB(), initStateDB(), initChainDB()])
+.then(result => {
 	network.connectAsServer(true);
 })

@@ -2,7 +2,8 @@ import { Boolean, Number, String, Literal, Array, Tuple, Record, Union, Static, 
 import {Peer} from './peer'
 import * as network from './network'
 import {Object,receiveObject,sendObject,requestObjectIfNotPresent} from './objects' // added in HW 2
-import {getLongestChainTip, receiveChainTip} from './chains'
+import {receiveChainTip} from './chains'
+import {getLongestChainTip} from './chains'
 const canonicalize = require('canonicalize')
 import {INVALID_MSG_TIMEOUT} from './constants'
 

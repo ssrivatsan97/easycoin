@@ -1,40 +1,40 @@
 // This file added in HW 3
 import { Boolean, Number as RNumber, String, Literal, Array, Tuple, Record, Union, Static, Template, Partial, Null } from 'runtypes';
-import level from 'level-ts'
 import {isDeepStrictEqual} from 'util'
 import {objectToId, isSmallerHex} from './utils'
-import {CoinbaseObject, CoinbaseObjectType, GeneralTxObject, getObject, doesObjectExist, BlockObjectType, requestAndWaitForObject} from './objects'
+import {CoinbaseObject, CoinbaseObjectType, GeneralTxObject, BlockObjectType, getObject, requestAndWaitForObject} from './objects'
 import {validateTx, inputValue, outputValue} from './transactions'
 import {UTXO, UTXOType} from './utxo'
 import {updateLongestChain} from './chains'
 import {BLOCK_REWARDS, BLOCK_TARGET, GENESIS_ID, DOWNLOAD_TIMEOUT} from './constants'
+import * as DB from './database'
 
-const BlockState = Record({
+export const BlockState = Record({
 	height: RNumber,
 	state: Array(UTXO)
 })
-type BlockStateType = Static<typeof BlockState>
-
-const stateDB = new level('./utxoDatabase')
-// Database will store blockid : {height, UTXOset}
-// This is naive snapshot of state at each block
+export type BlockStateType = Static<typeof BlockState>
 
 export async function initStateDB(){
-	await stateDB.put(GENESIS_ID, {height:0, state:[]})
+	await DB.put(GENESIS_ID, {height:0, state:[]})
+}
+
+export async function clearStateDB(){
+	await DB.clear("state:")
 }
 
 export async function setState (blockid: string, state: BlockStateType) {
-	if (!await stateDB.exists(blockid)) {
-		await stateDB.put(blockid, state)
+	if (!await doesStateExist(blockid)) {
+		await DB.put("state:"+blockid, state)
 	}
 }
 
 export async function getState (blockid: string) {
-	return await stateDB.get(blockid)
+	return await DB.get("state:"+blockid)
 }
 
 export async function doesStateExist (blockid: string) {
-	return await stateDB.exists(blockid)
+	return await DB.exists("state:"+blockid)
 }
 
 export async function validateBlock(block: BlockObjectType){
