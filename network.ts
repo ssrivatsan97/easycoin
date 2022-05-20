@@ -3,16 +3,15 @@ import {Socket} from 'net'
 import * as fs from 'fs'
 import * as Message from './message'
 import {Peer} from './peer'
-import level from 'level-ts'
 import {parseIpPort, validateIpPort} from './utils'
 const canonicalize = require('canonicalize')
 import {config} from './constants'
-
-const peerDB = new level('./discoveredPeerList');
+import * as DB from './database'
 
 const connectedPeerList: Peer[] = [];
 
 export function connectAsServer(bootstrapMode=false){
+	console.log("Creating server....")
 	let myName;
 	let port;
 	if(bootstrapMode){
@@ -56,7 +55,7 @@ export function connectAsServer(bootstrapMode=false){
 		});
 
 		socket.on('data', data => {
-			console.log("Data received from "+socket.remoteAddress+" port "+socket.remotePort+": "+data)
+			// console.log("Data received from "+socket.remoteAddress+" port "+socket.remotePort+": "+data)
 			msgHandler.handle(data.toString());
 		});
 
@@ -77,6 +76,7 @@ export function connectAsServer(bootstrapMode=false){
 }
 
 export async function connectAsClient(){
+	console.log("Connecting as client to known peers....")
 	const myName = config['myName'];
 	const bootstrapPort = config['bootstrapPort'];
 	const bootstrapAddress = config['bootstrapAddress'];
@@ -118,7 +118,7 @@ export async function connectAsClient(){
 			});
 
 			client.on('data', data => {
-				console.log("Data received from "+client.remoteAddress+" port "+client.remotePort+": "+data)
+				// console.log("Data received from "+client.remoteAddress+" port "+client.remotePort+": "+data)
 				msgHandler.handle(data.toString());
 			});
 
@@ -135,7 +135,7 @@ export async function connectAsClient(){
 			});
 		}
 	}
-	await peerDB.put('discoveredPeerList', discoveredPeerList)
+	await writeDiscoveredPeers(discoveredPeerList)
 	requestChainTip() // Added in HW 4
 }
 
@@ -143,7 +143,7 @@ export function sendMessage(data:string, peer:Peer){
 	const socket = peer.socket
 	if(socket !== undefined)
 		socket.write(data);
-	console.log("Sent: "+data+" to "+socket.remoteAddress+":"+socket.remotePort)
+	// console.log("Sent: "+data+" to "+socket.remoteAddress+":"+socket.remotePort)
 }
 
 export function broadcastMessage(data:string){
@@ -160,10 +160,25 @@ export function broadcastMessageExceptSender(data:string, sender:Peer){
 }
 
 export function sayHello(peer:Peer, myName:string){
+	console.log("Sending hello message to peer "+peer.name)
 	sendMessage(Message.encodeMessage({type:'hello',version:'0.8.0',agent:myName}), peer);
 }
 
+export async function readDiscoveredPeers(){
+	if(await DB.exists('discoveredPeerList'))
+		return await DB.get('discoveredPeerList');
+	else {
+		await DB.put('discoveredPeerList',[]);
+		return [];
+	}
+}
+
+export async function writeDiscoveredPeers(discoveredPeerList: string[]){
+	await DB.put('discoveredPeerList', discoveredPeerList)
+}
+
 export function askForPeers(peer:Peer){
+	console.log("Asking peer "+peer.name+" for known peers")
 	sendMessage(Message.encodeMessage({type:'getpeers'}), peer);
 }
 
@@ -174,26 +189,18 @@ export async function discoveredNewPeers(peerset: string[]){
 			discoveredPeerList.push(item);
 		}
 	});
-	await peerDB.put('discoveredPeerList', discoveredPeerList);
+	await writeDiscoveredPeers(discoveredPeerList);
 }
 
 export async function sendDiscoveredPeers(peer: Peer){
 	const discoveredPeerList = await readDiscoveredPeers();
 	const msgObject = {type:"peers", peers:discoveredPeerList};
+	console.log("Sending discovered peer list to "+peer.name)
 	sendMessage(Message.encodeMessage(msgObject), peer);
 }
 
-export async function readDiscoveredPeers(){
-	if(await peerDB.exists('discoveredPeerList'))
-		return await peerDB.get('discoveredPeerList');
-	else {
-		await peerDB.put('discoveredPeerList',[]);
-		return [];
-	}
-}
-
 export function reportError(peer:Peer, error:string){
-	console.log(error);
+	console.log("Reporting error to peer "+peer.name+": "+error);
 	sendMessage(Message.encodeMessage({type:"error", error:error}), peer)
 }
 
@@ -206,11 +213,13 @@ export function closeDueToError(peer:Peer, error:string){
 
 // Added in HW 4
 export function sendChainTip(peer: Peer, blockid: string){
+	console.log("Sending chain tip "+blockid+" to peer")
 	sendMessage(Message.encodeMessage({type:"chaintip", blockid:blockid}), peer)
 }
 
 // Added in HW 4
 export function requestChainTip(){
+	console.log("Requesting all peers for chain tip")
 	broadcastMessage(Message.encodeMessage({type:"getchaintip"}))
 }
 

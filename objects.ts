@@ -1,13 +1,13 @@
 // This file is added in HW 2
 import { Boolean, Number, String, Literal, Array, Tuple, Record, Union, Static, Template, Partial, Null } from 'runtypes';
+const canonicalize = require('canonicalize')
 import * as network from './network'
 import * as message from './message'
 import {Peer} from './peer'
 import {validateTx} from './transactions'
 import {validateBlock} from './blocks'
 import {objectToId} from './utils'
-import level from 'level-ts'
-const canonicalize = require('canonicalize')
+import * as DB from './database'
 import {GENESIS_ID, GENESIS_BLOCK} from './constants'
 
 const Outpoint = Record({
@@ -54,15 +54,17 @@ export type TxObjectType = Static<typeof TxObject>
 export type BlockObjectType = Static<typeof BlockObject>
 export type ObjectType = Static<typeof Object>
 
-const objectDB = new level('./objectDatabase');
-
 export async function initObjectDB(){
-	await objectDB.put(GENESIS_ID, canonicalize(GENESIS_BLOCK))
+	await DB.put("object:"+GENESIS_ID, canonicalize(GENESIS_BLOCK))
+}
+
+export async function clearObjectDB(){
+	await DB.clear("object:")
 }
 
 export async function getObject(objectid: string){
 	if (await doesObjectExist(objectid)){
-		const obj = JSON.parse(await objectDB.get(objectid));
+		const obj = JSON.parse(await DB.get("object:"+objectid));
 		return obj;
 	} 
 	else {
@@ -71,11 +73,16 @@ export async function getObject(objectid: string){
 }
 
 export async function doesObjectExist(objectid: string){
-	return await objectDB.exists(objectid)
+	return await DB.exists("object:"+objectid)
+}
+
+export async function saveObject(objectid: string, object: any){
+	await DB.put("object:"+objectid, canonicalize(object))
 }
 
 function requestObject(objectid: string, peer:Peer){
 	const getObjectMessage = message.encodeMessage({type:"getobject",objectid:objectid});
+	console.log("Requesting peer "+peer.name+" for object "+objectid)
 	network.sendMessage(getObjectMessage,peer);
 }
 
@@ -89,6 +96,7 @@ export async function requestObjectIfNotPresent(objectid: string, peer:Peer){
 
 export function requestAllObject(objectid: string){
 	const getObjectMessage = message.encodeMessage({type:"getobject",objectid:objectid});
+	console.log("Requesting network for object "+objectid)
 	network.broadcastMessage(getObjectMessage);
 }
 
@@ -97,7 +105,6 @@ export function requestAllObject(objectid: string){
 let objectWaiters: {[objectid: string]: {resolve: ((obj: any) => void), reject: ((obj: any) => void)}[]} = {}
 
 export function requestAndWaitForObject(objectid: string, timeout: number){
-	requestAllObject(objectid)
 	return new Promise((resolve,reject) => {
 		if(typeof objectWaiters[objectid] === "undefined"){
 			objectWaiters[objectid] = [{resolve, reject}]
@@ -113,6 +120,7 @@ export function requestAndWaitForObject(objectid: string, timeout: number){
 
 export function advertizeObject(objectid:string, sender:Peer){
 	const iHaveObjectMessage = message.encodeMessage({type:"ihaveobject",objectid:objectid});
+	console.log("Gossip I have object "+objectid+" to all peers")
 	network.broadcastMessageExceptSender(iHaveObjectMessage,sender);
 }
 
@@ -145,7 +153,7 @@ export async function receiveObject(object:any, sender:Peer){
 			}
 		}
 		if(objectIsValid){
-			await objectDB.put(objectid, canonicalize(object));
+			await saveObject(objectid, object);
 			advertizeObject(objectid,sender);
 		}
 		if (typeof objectWaiters[objectid] !== "undefined"){ // Added in HW 3
@@ -178,6 +186,7 @@ export async function sendObject(objectid:string, peer:Peer){
 	try{
 		const obj = await getObject(objectid);
 		const objectMessage = message.encodeMessage({type:"object",object:obj});
+		console.log("Sending object "+objectid+" to peer "+peer.name)
 		network.sendMessage(objectMessage,peer);
 	} catch(error) {
 		throw error;

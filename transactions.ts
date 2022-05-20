@@ -3,8 +3,9 @@ import * as network from './network'
 import * as message from './message'
 import {Peer} from './peer'
 import {nullSignatures} from './utils'
-import {GeneralTxObject, CoinbaseObject, TxObject, getObject} from './objects'
+import {GeneralTxObject, CoinbaseObject, TxObject} from './objects'
 import {GeneralTxObjectType, CoinbaseObjectType, TxObjectType} from './objects'
+import {getObject} from './objects'
 const canonicalize = require('canonicalize')
 import * as ed from '@noble/ed25519'
 
