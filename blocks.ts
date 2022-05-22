@@ -1,9 +1,8 @@
 // This file added in HW 3
 import { Boolean, Number as RNumber, String, Literal, Array, Tuple, Record, Union, Static, Template, Partial, Null } from 'runtypes';
-import {isDeepStrictEqual} from 'util'
 import {objectToId, isSmallerHex} from './utils'
-import {CoinbaseObject, CoinbaseObjectType, GeneralTxObject, BlockObjectType, getObject, requestAndWaitForObject} from './objects'
-import {validateTx, inputValue, outputValue} from './transactions'
+import {CoinbaseObject, CoinbaseObjectType, GeneralTxObject, BlockObjectType, getObject, requestAndWaitForObject, saveObject} from './objects'
+import {inputValue, outputValue, validateTxWrtState} from './transactions'
 import {UTXO, UTXOType} from './utxo'
 import {updateLongestChain} from './chains'
 import {BLOCK_REWARDS, BLOCK_TARGET, GENESIS_ID, DOWNLOAD_TIMEOUT} from './constants'
@@ -142,15 +141,12 @@ export async function validateBlock(block: BlockObjectType){
 				if(hasCoinbase && tx.inputs[j].outpoint.txid===objectToId(coinbase)){
 					throw "Invalid block: Coinbase is spent in transaction "+i+" input "+j+" in the same block"
 				}
-				let inputUtxo = {txid:tx.inputs[j].outpoint.txid, index:tx.inputs[j].outpoint.index}
-				if(!newUtxoSet.some((item) => isDeepStrictEqual(item, inputUtxo))){
-					throw "Invalid block: Input "+j+" of transaction "+i+" does not match an unspent output"
-				}
-				newUtxoSet = newUtxoSet.filter((item) => !isDeepStrictEqual(item, inputUtxo))
 			}
 			// Add outputs to new UTXO set
-			for(let j=0; j<tx.outputs.length; j++){
-				newUtxoSet.push({txid:block.txids[i], index:j})
+			try{
+				newUtxoSet = validateTxWrtState(tx, newUtxoSet)
+			} catch(error){
+				throw "Invalid block: " + (error as string)
 			}
 			try{
 				input_sum += await inputValue(tx)
@@ -168,5 +164,6 @@ export async function validateBlock(block: BlockObjectType){
 
 	// If you reach here, it means the block is valid. So add an entry to the UTXO set.
 	await setState(blockid, {height:height, state:newUtxoSet})
+	await saveObject(blockid, block)
 	await updateLongestChain(blockid)
 }

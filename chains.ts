@@ -2,6 +2,7 @@ import {BlockObject, BlockObjectType, requestAndWaitForObject} from './objects'
 import {validateBlock, getState, doesStateExist} from './blocks'
 import {DOWNLOAD_TIMEOUT, GENESIS_ID} from './constants'
 import * as DB from './database'
+import {updateMempoolState} from './mempool'
 
 
 // longest chain state
@@ -41,17 +42,19 @@ export async function setLongestChain(blockid: string, height: number){
 
 export async function updateLongestChain(blockid: string){
 	// Assume that this function is only called with validated blocks
-	let height
+	let blockState
 	try {
-		height = (await getState(blockid)).height
+		blockState = await getState(blockid)
 	} catch(error){
 		console.log("New chaintip "+blockid+" not found in state database")
 		return
 	}
-	let longestChainHeight = await getLongestChainHeight()
-	if (height > longestChainHeight){
-		await setLongestChain(blockid, height)
-		console.log("Update longest chain to "+blockid+", height = "+height)
+	const oldChainTip = await getLongestChainTip()
+	const longestChainHeight = await getLongestChainHeight()
+	if (blockState.height > longestChainHeight){
+		await setLongestChain(blockid, blockState.height)
+		console.log("Update longest chain to "+blockid+", height = "+blockState.height)
+		await updateMempoolState(blockState.state, oldChainTip, blockid, blockState.height - longestChainHeight)
 	}
 }
 

@@ -2,12 +2,15 @@
 import * as network from './network'
 import * as message from './message'
 import {Peer} from './peer'
-import {nullSignatures} from './utils'
+import {nullSignatures, objectToId} from './utils'
 import {GeneralTxObject, CoinbaseObject, TxObject} from './objects'
 import {GeneralTxObjectType, CoinbaseObjectType, TxObjectType} from './objects'
-import {getObject} from './objects'
+import {getObject, saveObject} from './objects'
+import {UTXOType} from './utxo'
+import {addTxToMempool} from './mempool'
 const canonicalize = require('canonicalize')
 import * as ed from '@noble/ed25519'
+import {isDeepStrictEqual} from 'util'
 
 export async function validateTx(tx: TxObjectType){
 	if(GeneralTxObject.guard(tx)){
@@ -64,7 +67,28 @@ export async function validateTx(tx: TxObjectType){
 	} else{
 		throw "Invalid transaction: Doesn't match transaction type"
 	}
+	// If we reach so far, then the transaction by itself is valid. Now try to add it to mempool
+	addTxToMempool(tx)
+	await saveObject(objectToId(tx), tx)
+}
 
+export function validateTxWrtState(tx: TxObjectType, state: UTXOType[]){
+	if (CoinbaseObject.guard(tx)){
+		return state
+	}
+	const txid = objectToId(tx)
+	for(let j=0; j<tx.inputs.length; j++){
+		let inputUtxo = {txid:tx.inputs[j].outpoint.txid, index:tx.inputs[j].outpoint.index}
+		if(!state.some((item) => isDeepStrictEqual(item, inputUtxo))){
+			throw "Input "+j+" of transaction "+txid+" does not match an unspent output"
+		}
+		state = state.filter((item) => !isDeepStrictEqual(item, inputUtxo))
+	}
+	// Add outputs to new UTXO set
+	for(let j=0; j<tx.outputs.length; j++){
+		state = [...state, {txid:txid, index:j}]
+	}
+	return state
 }
 
 // IMPORTANT: Validate the transaction before passing it to this function!

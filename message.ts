@@ -2,8 +2,8 @@ import { Boolean, Number, String, Literal, Array, Tuple, Record, Union, Static, 
 import {Peer} from './peer'
 import * as network from './network'
 import {Object,receiveObject,sendObject,requestObjectIfNotPresent} from './objects' // added in HW 2
-import {receiveChainTip} from './chains'
-import {getLongestChainTip} from './chains'
+import {receiveChainTip, getLongestChainTip} from './chains'
+import {receiveMempool, getMempool} from './mempool'
 const canonicalize = require('canonicalize')
 import {INVALID_MSG_TIMEOUT} from './constants'
 
@@ -59,7 +59,7 @@ const GetMempoolMessage = Record({
 
 const MempoolMessage = Record({
 	type: Literal('mempool'),
-	blockid: Array(String)
+	txids: Array(String)
 })
 
 const MessageObject = Union(HelloMessage, PeersMessage, GetPeersMessage, ErrorMessage, GetObjectMessage, IHaveObjectMessage, ObjectMessage, GetChainTipMessage, ChainTipMessage, GetMempoolMessage, MempoolMessage); // changed in HW 4
@@ -175,11 +175,13 @@ export class messageHandler{
 					break
 
 				case 'getmempool':
-					network.reportError(this.peer, "Getmempool is currently unsupported")
+					console.log("Peer "+this.peer.name+" requested for mempool")
+					network.sendMempool(this.peer, getMempool())
 					break
 
 				case 'mempool':
-					network.reportError(this.peer, "Mempool is currently unsupported")
+					console.log("Peer "+this.peer.name+" sent a mempool")
+					receiveMempool(msgObject.txids)
 					break
 			}
 		});
