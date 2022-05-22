@@ -106,15 +106,20 @@ let objectWaiters: {[objectid: string]: {resolve: ((obj: any) => void), reject: 
 
 export function requestAndWaitForObject(objectid: string, timeout: number){
 	return new Promise((resolve,reject) => {
+		let firstRequest: boolean
 		if(typeof objectWaiters[objectid] === "undefined"){
+			firstRequest = true
 			objectWaiters[objectid] = [{resolve, reject}]
 		} else{
+			firstRequest = false
 			objectWaiters[objectid].push({resolve, reject})
 		}
 		setTimeout(() => {
 			reject("Object with id "+objectid+" not found in network")
 		}, timeout)
-		requestAllObject(objectid)
+		if (firstRequest){
+			requestAllObject(objectid)
+		}
 	})
 }
 
