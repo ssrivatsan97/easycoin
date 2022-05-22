@@ -153,7 +153,8 @@ export async function receiveObject(object:any, sender:Peer){
 			}
 		}
 		if(objectIsValid){
-			await saveObject(objectid, object);
+			// Object is now being saved in the block and transaction validation functions
+			// await saveObject(objectid, object);
 			advertizeObject(objectid,sender);
 		}
 		if (typeof objectWaiters[objectid] !== "undefined"){ // Added in HW 3

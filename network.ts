@@ -83,7 +83,8 @@ export async function connectAsClient(){
 
 	// Try to connect to all known peers in my database
 	
-	await discoveredNewPeers([bootstrapAddress+":"+bootstrapPort])
+	// await discoveredNewPeers([bootstrapAddress+":"+bootstrapPort])
+	await discoveredNewPeers(config['hardcodedPeerList'])
 	const discoveredPeerList = await readDiscoveredPeers()
 	for(let i=0; i<discoveredPeerList.length; i++)
 	{
@@ -108,6 +109,8 @@ export async function connectAsClient(){
 				msgHandler = new Message.messageHandler(peer)
 				sayHello(peer,myName);
 				askForPeers(peer);
+				requestChainTip(peer) // Added in HW 4
+				requestMempool(peer) // Added in HW 5
 			});
 
 			client.on('error', (error) => {
@@ -136,7 +139,6 @@ export async function connectAsClient(){
 		}
 	}
 	await writeDiscoveredPeers(discoveredPeerList)
-	requestChainTip() // Added in HW 4
 }
 
 export function sendMessage(data:string, peer:Peer){
@@ -213,14 +215,24 @@ export function closeDueToError(peer:Peer, error:string){
 
 // Added in HW 4
 export function sendChainTip(peer: Peer, blockid: string){
-	console.log("Sending chain tip "+blockid+" to peer")
+	console.log("Sending chain tip "+blockid+" to peer "+peer.name)
 	sendMessage(Message.encodeMessage({type:"chaintip", blockid:blockid}), peer)
 }
 
 // Added in HW 4
-export function requestChainTip(){
-	console.log("Requesting all peers for chain tip")
+export function requestChainTip(peer: Peer){
+	console.log("Requesting peer "+peer.name+" for chain tip")
 	broadcastMessage(Message.encodeMessage({type:"getchaintip"}))
+}
+
+export function sendMempool(peer:Peer, mempool: string[]){
+	console.log("Sending mempool to peer "+peer.name)
+	sendMessage(Message.encodeMessage({type:"mempool", txids:mempool}), peer)
+}
+
+export function requestMempool(peer: Peer){
+	console.log("Requesting peer "+peer.name+" for mempools")
+	broadcastMessage(Message.encodeMessage({type:"getmempool"}))
 }
 
 // TODO: Figure out @types/net package
