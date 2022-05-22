@@ -40,12 +40,12 @@ export async function doesStateExist (blockid: string) {
 export async function validateBlock(block: BlockObjectType){
 	if(block.T !== BLOCK_TARGET)
 		throw "Invalid block: Incorrect target "+block.T
-	if(! /[0-9a-f]{64}/.test(block.nonce))
+	if(! /^[0-9a-f]{64}$/.test(block.nonce))
 		throw "Invalid block: Nonce is not a 256-bit hex string: "+block.nonce
 	const blockid = objectToId(block)
 	if(!isSmallerHex(blockid, BLOCK_TARGET))
 		throw "Invalid block: Block hash does not match target: "+blockid
-	if(block.previd !== null && !/[0-9a-f]{64}/.test(block.previd))
+	if(block.previd !== null && !/^[0-9a-f]{64}$/.test(block.previd))
 		throw "Invalid block: previd is not a 256-bit hex string: "+block.previd
 	if(block.previd === null && blockid !== GENESIS_ID)
 		throw "Incorrect genesis block"
@@ -72,9 +72,9 @@ export async function validateBlock(block: BlockObjectType){
 		throw "Invalid block: Timestamp "+block.created+" not later than parent block's timestamp "+prevBlock.created
 	}
 	
-	if(typeof block.miner!=="undefined" && ! /[ -~]{1,128}/.test(block.miner))
+	if(typeof block.miner!=="undefined" && ! /^[ -~]{1,128}$/.test(block.miner))
 		throw "Invalid block: Only ASCII-printable strings up to 128 characters accepted in miner"
-	if(typeof block.note!=="undefined" && ! /[ -~]{1,128}/.test(block.note))
+	if(typeof block.note!=="undefined" && ! /^[ -~]{1,128}$/.test(block.note))
 		throw "Invalid block: Only ASCII-printable strings up to 128 characters accepted in note"
 	
 	let hasCoinbase = false

@@ -48,7 +48,7 @@ export async function validateTx(tx: TxObjectType){
 		for(let i=0; i<tx.outputs.length; i++){
 			if (!Number.isInteger(tx.outputs[i].value) || tx.outputs[i].value < 0)
 				throw "Invalid transaction: Value"+tx.outputs[i].value+" of output "+i+" is not non-negative integer"
-			if (! /[0-9a-f]{64}/.test(tx.outputs[i].pubkey))
+			if (! /^[0-9a-f]{64}$/.test(tx.outputs[i].pubkey))
 				throw "Invalid transaction: Output "+i+" has invalid public key";
 			sumOutputValues += tx.outputs[i].value;
 		}
@@ -59,7 +59,7 @@ export async function validateTx(tx: TxObjectType){
 			throw "Invalid coinbase transaction: Height "+tx.height+" is not non-negative integer"
 		if (tx.outputs.length!==1)
 			throw "Invalid coinbase transaction: Contains "+tx.outputs.length+" outputs, expected only 1"
-		if (! /[0-9a-f]{64}/.test(tx.outputs[0].pubkey))
+		if (! /^[0-9a-f]{64}$/.test(tx.outputs[0].pubkey))
 			throw "Invalid coinbase transaction: Output has invalid public key";
 	} else{
 		throw "Invalid transaction: Doesn't match transaction type"
