@@ -21,7 +21,7 @@ export async function receiveMempool(txids: string[]){
 			console.log("Transaction "+i+" with id "+txids[i]+" not found in database. Requesting network...")
 			promises.push(requestAndWaitForObject(txids[i], DOWNLOAD_TIMEOUT)
 				.catch((error) => {
-					throw "Transaction "+txids[i]+": "+error
+					console.log("Did not add transaction "+txids[i]+" to mempool: "+error as string)
 				})
 			)
 		}
