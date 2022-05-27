@@ -123,37 +123,35 @@ export function requestAndWaitForObject(objectid: string, timeout: number){
 	})
 }
 
-export function advertizeObject(objectid:string, sender:Peer){
+export function advertizeObject(objectid:string, sender?:Peer){
 	const iHaveObjectMessage = message.encodeMessage({type:"ihaveobject",objectid:objectid});
 	console.log("Gossip I have object "+objectid+" to all peers")
-	network.broadcastMessageExceptSender(iHaveObjectMessage,sender);
+	if (typeof sender === "undefined"){
+		network.broadcastMessage(iHaveObjectMessage)
+	} else {
+		network.broadcastMessageExceptSender(iHaveObjectMessage,sender);
+	}
 }
 
-export async function receiveObject(object:any, sender:Peer){
+export async function receiveObject(object:any, sender?:Peer){
 	const objectid = objectToId(object);
 	let invalidError = ""
 	if (!(await doesObjectExist(objectid))){
 		let objectIsValid = false;
-		if (TxObject.guard(object)){
-			console.log("Validating transaction...")
-			try{
+		try{
+			if (TxObject.guard(object)){
+				console.log("Validating transaction "+objectid+"...")
 				await validateTx(object)
-				objectIsValid=true
-				console.log("Transaction is valid")
-			} catch(error){
-				console.log(error);
-				invalidError = error as string
-				network.reportError(sender, error as string)
-			}
-		} else if (BlockObject.guard(object)){ // This case added in HW 3
-			console.log("Validating block...")
-			try{
+				console.log("Transaction "+objectid+" is valid")
+			} else if (BlockObject.guard(object)){ // This case added in HW 3
+				console.log("Validating block "+objectid+"...")
 				await validateBlock(object)
-				objectIsValid=true
-				console.log("Block is valid")
-			} catch(error){
-				console.log(error);
-				invalidError = error as string
+				console.log("Block "+objectid+" is valid")
+			}
+		} catch(error){
+			console.log(error);
+			invalidError = error as string
+			if (typeof sender !== "undefined"){
 				network.reportError(sender, error as string)
 			}
 		}

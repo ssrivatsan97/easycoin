@@ -25,7 +25,9 @@
     "jquery": "^3.6.0",
     "level-ts": "^2.1.0",
     "runtypes": "^6.5.0",
-    "utils": "^0.2.2"
+    "threads": "^1.7.0",
+    "utils": "^0.2.2",
+    "worker-threads": "^1.0.0"
   },
   "devDependencies": {
     "@types/jquery": "^3.5.13",
