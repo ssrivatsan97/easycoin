@@ -44,7 +44,7 @@ export async function startMining() {
 		console.log(coinbase)
 		console.log(blockWithoutNonce)
 		try{
-			const promises = miners.map(miner => miner(blockWithoutNonce, EASY_TARGET))
+			const promises = miners.map(miner => miner(blockWithoutNonce))
 			block = await Promise.any(promises)
 			endTime = Date.now()
 			const timeTaken = (endTime - startTime) / 1000
