@@ -6,11 +6,16 @@ export const config = {
 	"bootstrapName" : "Bootstrap",
 	"bootstrapAddress" : "149.28.220.241",
 	"bootstrapPort" : 18020,
-	"hardcodedPeerList" : ["localhost:18020", "149.28.220.241:18018"]
+	"hardcodedPeerList" : ["149.28.220.241:18018"],
+	"mine" : true,
+	"minerName" : "EasyCoin",
+	"pubkey" : "8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5cfbae1e911f9"
 }
 
-export const INVALID_MSG_TIMEOUT = 1000;
+export const INVALID_MSG_TIMEOUT = 1000
 export const DOWNLOAD_TIMEOUT = 5000
+export const MINING_TIMEOUT = 1000
+export const NUM_MINING_THREADS = 1
 
 export const BLOCK_REWARDS = 50000000000000
 export const BLOCK_TARGET = "00000002af000000000000000000000000000000000000000000000000000000"
