@@ -1,0 +1,3 @@
+[submodule "marabu_miner/cryptopp"]
+	path = marabu_miner/cryptopp
+	url = git@github.com:weidai11/cryptopp.git

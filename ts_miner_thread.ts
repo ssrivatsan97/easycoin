@@ -1,7 +1,7 @@
 import * as ed from '@noble/ed25519'
 import {objectToId} from './utils'
 import { expose } from "threads/worker"
-import {BLOCK_TARGET, MINING_TIMEOUT} from './constants'
+import {BLOCK_TARGET} from './constants'
 import {BlockObjectType} from './objects'
 
 // const ed = require('@noble/ed25519')
@@ -12,7 +12,7 @@ function randomNonce(){
   return Buffer.from(ed.utils.randomPrivateKey()).toString('hex')
 }
 
-function mine(templateBlock: BlockObjectType, target: string = BLOCK_TARGET): BlockObjectType{
+function mine(templateBlock: BlockObjectType, target: string = BLOCK_TARGET, timeout: number): BlockObjectType{
   let hash = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
   let startTime = Date.now()
   // let created = Math.floor(startTime/1000)
@@ -24,8 +24,8 @@ function mine(templateBlock: BlockObjectType, target: string = BLOCK_TARGET): Bl
     block.nonce = nonce
     hash = objectToId(block)
     nowTime = Date.now()
-    if (nowTime - startTime > MINING_TIMEOUT) {
-      throw "Tried for one second, could not find block"
+    if (nowTime - startTime > timeout) {
+      throw "Tried for "+(timeout/1000)+" second(s), could not find block"
     }
   }
   // console.log("Mined one block. Time taken " + (nowTime-startTime)/1000 + " seconds")

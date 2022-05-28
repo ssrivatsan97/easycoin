@@ -1,10 +1,11 @@
-import {spawn, Thread, Worker, FunctionThread} from 'threads'
 import {getLongestChainTip, getLongestChainHeight} from './chains'
 import {getMempool} from './mempool'
-import {BLOCK_TARGET, config, NUM_MINING_THREADS, BLOCK_REWARDS} from './constants'
+import {BLOCK_TARGET, config, NUM_MINING_THREADS, BLOCK_REWARDS, MINING_TIMEOUT} from './constants'
 import {receiveObject, BlockObjectType} from './objects'
-import {MineFuncType} from './miner_thread'
 import {objectToId} from './utils'
+import {TSMiner, CPPMiner} from './miner_class'
+
+const Miner = (config.minerType === "cpp") ? CPPMiner : TSMiner
 
 const EASY_TARGET = "00002af0000000000000000000000000000000000000000000000000000000000"
 
@@ -24,17 +25,13 @@ export async function startMining() {
 		T: BLOCK_TARGET,
 		created: timeNow,
 		miner: config.minerName,
-		note: "Test block (easy target)",
+		note: "Test block (full target)",
 		previd: previd,
 		txids: txids,
 		nonce: "0000000000000000000000000000000000000000000000000000000000000000"
 	}
-	console.log("Initializing "+NUM_MINING_THREADS+" mining threads.........")
-	const miners = [await spawn<MineFuncType>(new Worker("./miner_thread"))]
-	for (let i = 1; i < NUM_MINING_THREADS; i++) {
-		miners.push(await spawn<MineFuncType>(new Worker("./miner_thread")))
-	}
-	console.log("Initialized "+NUM_MINING_THREADS+" mining threads.")
+	
+	const miner = new Miner(NUM_MINING_THREADS, MINING_TIMEOUT)
 
 	let block: BlockObjectType
 	let startTime = Date.now()
@@ -44,8 +41,7 @@ export async function startMining() {
 		console.log(coinbase)
 		console.log(blockWithoutNonce)
 		try{
-			const promises = miners.map(miner => miner(blockWithoutNonce))
-			block = await Promise.any(promises)
+			block = await miner.mine(blockWithoutNonce, BLOCK_TARGET)
 			endTime = Date.now()
 			const timeTaken = (endTime - startTime) / 1000
 			console.log("New block mined in "+timeTaken+" s")
@@ -54,7 +50,7 @@ export async function startMining() {
 			await receiveObject(block) // takes care of validating, saving and broadcasting the block
 			startTime = Date.now()
 		} catch(error) {
-			// console.log("Miners did not find a block in one second.")
+			console.log("Miners did not find a block in one second.")
 		} finally {
 			blockWithoutNonce.created = Math.floor(Date.now()/1000)
 			blockWithoutNonce.previd = await getLongestChainTip()
