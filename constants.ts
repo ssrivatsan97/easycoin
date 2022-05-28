@@ -9,13 +9,16 @@ export const config = {
 	"hardcodedPeerList" : ["149.28.220.241:18018"],
 	"mine" : true,
 	"minerName" : "EasyCoin",
+	"minerType" : "cpp", // options : either "cpp" or "ts"
+	"cppMinerPath" : "./marabu_miner/build/MinerStandalone",
+	"tsMinerPath" : "./miner_thread",
 	"pubkey" : "8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5cfbae1e911f9"
 }
 
 export const INVALID_MSG_TIMEOUT = 1000
 export const DOWNLOAD_TIMEOUT = 5000
-export const MINING_TIMEOUT = 1000
-export const NUM_MINING_THREADS = 1
+export const MINING_TIMEOUT = 60000
+export const NUM_MINING_THREADS = 4
 
 export const BLOCK_REWARDS = 50000000000000
 export const BLOCK_TARGET = "00000002af000000000000000000000000000000000000000000000000000000"
