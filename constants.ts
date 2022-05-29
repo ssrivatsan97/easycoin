@@ -2,23 +2,22 @@ export const config = {
 	"port" : 18018,
 	"serverTimeoutDuration" : 300000,
 	"socketTimeoutDuration" : 60000,
-	"myName" : "EasyCoin",
+	"myName" : "EasyCoin", // Please change this
 	"bootstrapName" : "Bootstrap",
 	"bootstrapAddress" : "149.28.220.241",
 	"bootstrapPort" : 18020,
 	"hardcodedPeerList" : ["149.28.220.241:18018"],
-	"mine" : true,
-	"minerName" : "EasyCoin",
-	"minerType" : "cpp", // options : either "cpp" or "ts"
-	"cppMinerPath" : "./marabu_miner/build/MinerStandalone",
-	"tsMinerPath" : "./miner_thread",
+	"minerName" : "EasyCoin", // Please change this
+	"minerType" : "cpp", // options : either "cpp" or "ts" (default is "ts")
+	"cppMinerPath" : "./marabu_miner/build/MinerStandalone", // Path to C++ miner executable. Check if this path is correct after building C++ miner (see README)
+	"tsMinerPath" : "./ts_miner_thread", // Path to Typescript miner code.
 	"pubkey" : "8dbcd2401c89c04d6e53c81c90aa0b551cc8fc47c0469217c8f5cfbae1e911f9"
 }
 
-export const INVALID_MSG_TIMEOUT = 1000
-export const DOWNLOAD_TIMEOUT = 5000
-export const MINING_TIMEOUT = 60000
-export const NUM_MINING_THREADS = 4
+export const INVALID_MSG_TIMEOUT = 1000 // How long to wait for receiving fragmented messages
+export const DOWNLOAD_TIMEOUT = 30000 // How long to wait to receive previous blocks and transactions in a block (for Vultr, recommend using 30000)
+export const MINING_TIMEOUT = 60000 // How often does the miner refresh the block that it should mine (larger => less chance of mining on the wrong chain but less efficient)
+export const NUM_MINING_THREADS = 4 // Number of mining threads. Play around with this to see how many you can use.
 
 export const BLOCK_REWARDS = 50000000000000
 export const BLOCK_TARGET = "00000002af000000000000000000000000000000000000000000000000000000"
