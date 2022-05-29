@@ -148,6 +148,7 @@ export async function receiveObject(object:any, sender?:Peer){
 				await validateBlock(object)
 				console.log("Block "+objectid+" is valid")
 			}
+			objectIsValid = true
 		} catch(error){
 			console.log(error);
 			invalidError = error as string
