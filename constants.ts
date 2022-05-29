@@ -7,6 +7,8 @@ export const config = {
 	"bootstrapAddress" : "149.28.220.241",
 	"bootstrapPort" : 18020,
 	"hardcodedPeerList" : ["149.28.220.241:18018"],
+	"mine" : false, // Do you want to mine?
+	"sendTxs" : true, // Do you want to issue transactions? (you need to have a key pair and some bu in your account to do this!)
 	"minerName" : "EasyCoin", // Please change this
 	"minerType" : "cpp", // options : either "cpp" or "ts" (default is "ts")
 	"cppMinerPath" : "./marabu_miner/build/MinerStandalone", // Path to C++ miner executable. Check if this path is correct after building C++ miner (see README)
