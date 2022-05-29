@@ -50,7 +50,7 @@ export async function startMining() {
 			await receiveObject(block) // takes care of validating, saving and broadcasting the block
 			startTime = Date.now()
 		} catch(error) {
-			console.log("Miners did not find a block in one second.")
+			// console.log("Miners did not find a block in one second.")
 		} finally {
 			blockWithoutNonce.created = Math.floor(Date.now()/1000)
 			blockWithoutNonce.previd = await getLongestChainTip()
