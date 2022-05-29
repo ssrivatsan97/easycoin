@@ -37,10 +37,10 @@ export async function startMining() {
 	while(miningCount < maxBlocks) {
 		try{
 			block = await Promise.any([
-				miner1(blockWithoutNonce, BLOCK_TARGET),
-				miner2(blockWithoutNonce, BLOCK_TARGET),
-				miner3(blockWithoutNonce, BLOCK_TARGET),
-				miner4(blockWithoutNonce, BLOCK_TARGET)
+				miner1(blockWithoutNonce, EASY_TARGET),
+				miner2(blockWithoutNonce, EASY_TARGET),
+				miner3(blockWithoutNonce, EASY_TARGET),
+				miner4(blockWithoutNonce, EASY_TARGET)
 			])
 			endTime = Date.now()
 			const timeTaken = (endTime - startTime) / 1000

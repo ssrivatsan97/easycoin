@@ -25,6 +25,7 @@
     "fs": "^0.0.1-security",
     "jquery": "^3.6.0",
     "level-ts": "^2.1.0",
+    "pkg.json": "^2.0.8",
     "runtypes": "^6.5.0",
     "threads": "^1.7.0",
     "utils": "^0.2.2",
