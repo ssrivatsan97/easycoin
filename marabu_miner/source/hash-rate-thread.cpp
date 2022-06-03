@@ -19,7 +19,7 @@ int main(int args, char** argv) {
 		threads = atoi(argv[2]);
 	}
 
-	std::string block = "{\"T\":\"00000002af000000000000000000000000000000000000000000000000000000\",\"created\":1624219079,\"miner\":\"Easycoin\",\"nonce\":\"0000000000000000000000000000000000000000000000000000002634878840\",\"note\":\"Hash rate test\",\"previd\":null,\"txids\":[],\"type\":\"block\"}";
+	std::string block = "{\"T\":\"00000002af000000000000000000000000000000000000000000000000000000\",\"created\":1624219079,\"miner\":\"Easycoin\",\"nonce\":\"0000000000000000000000000000000000000000000000000000002634878840\",\"note\":\"Hash rate test\",\"previd\":\"00000000a420b7cefa2b7730243316921ed59ffe836e111ca3801f82a4f5360e\",\"txids\":[],\"type\":\"block\"}";
 
 	int numBlocks = 20;
 	double avgMiningTime = 0;
