@@ -20,9 +20,10 @@ To mine using the C++ miner (which is much faster), do the following:
 `cd marabu_miner/build`  
 `cmake ..`  
 `make`
-
 (If the above doesn't work on Ubuntu, try running `make` from the `marabu_miner` directory instead of from `marabu_miner/build` and then move the executables `HashRateThread` and `MinerStandalone` into `marabu_miner/build`.)
 
 1. After compiling the C++ miner, change `minerType` in constants.ts to `"cpp"`. Check that `cppMinerPath` points to the correct path for `MinerStandalone`. Then compile using `tsc` and run `index.js` as usual.
+
+1. You can also check the hash rate of the C++ miner by running `./HashRateThread` from within the directory `marabu_miner/build`.
 
 Many thanks to [marabu-miner-test](https://github.com/loukoum/marabu-miner-test) for the C++ implementation!
