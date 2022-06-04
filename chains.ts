@@ -1,9 +1,9 @@
 import {BlockObject, BlockObjectType, requestAndWaitForObject} from './objects'
 import {validateBlock, getState, doesStateExist} from './blocks'
-import {DOWNLOAD_TIMEOUT, GENESIS_ID} from './constants'
+import {DOWNLOAD_TIMEOUT, GENESIS_ID, CHAIN_LOG_INTERVAL} from './constants'
 import * as DB from './database'
 import {updateMempoolState} from './mempool'
-
+import {log as logLongestChain} from './logLongestChain'
 
 // longest chain state
 // Database contains 2 keys, longestChainTip and longestChainHeight
@@ -40,6 +40,18 @@ export async function setLongestChain(blockid: string, height: number){
 	await DB.put("longestChainTip", blockid)
 }
 
+async function getLastLoggedTime(){
+	try{
+		return await DB.get("lastLoggedTime")
+	} catch(error){
+		return 0
+	}
+}
+
+async function setLastLoggedTime(time: number){
+	await DB.put("lastLoggedTime", time)
+}
+
 export async function updateLongestChain(blockid: string){
 	// Assume that this function is only called with validated blocks
 	let blockState
@@ -55,6 +67,13 @@ export async function updateLongestChain(blockid: string){
 		await setLongestChain(blockid, blockState.height)
 		console.log("Update longest chain to "+blockid+", height = "+blockState.height)
 		await updateMempoolState(blockState.state, oldChainTip, blockid, blockState.height - longestChainHeight)
+	}
+
+	const timeNow = Date.now()
+	const lastLoggedTime = await getLastLoggedTime()
+	if (timeNow - lastLoggedTime > CHAIN_LOG_INTERVAL) {
+		await logLongestChain(blockid)
+		await setLastLoggedTime(timeNow)
 	}
 }
 
