@@ -68,13 +68,14 @@ export async function updateLongestChain(blockid: string){
 		console.log("Update longest chain to "+blockid+", height = "+blockState.height)
 		await updateMempoolState(blockState.state, oldChainTip, blockid, blockState.height - longestChainHeight)
 	}
-
+	/*
 	const timeNow = Date.now()
 	const lastLoggedTime = await getLastLoggedTime()
 	if (timeNow - lastLoggedTime > CHAIN_LOG_INTERVAL) {
 		await logLongestChain(blockid)
 		await setLastLoggedTime(timeNow)
 	}
+	*/
 }
 
 export async function receiveChainTip(blockid: string){
