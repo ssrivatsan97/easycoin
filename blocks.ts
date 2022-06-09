@@ -102,6 +102,8 @@ export async function validateBlock(block: BlockObjectType){
 	// Check if transactions exist in the database, if not request them.
 	let txs: any[] = []
 	let promises: Promise<any>[] = []
+	let isError = false
+	let errorMsg = ""
 	for(let i=0; i<block.txids.length; i++){
 		try{
 			txs[i] = await getObject(block.txids[i])
@@ -112,15 +114,17 @@ export async function validateBlock(block: BlockObjectType){
 					txs[i] = value
 				})
 				.catch((error) => {
-					throw "Invalid block: Transaction "+i+": "+error
+					if(!isError){
+						errorMsg = "Invalid block: Transaction "+i+": "+error
+						isError = true
+					}
 				})
 			)
 		}
 	}
-	try{
-		await Promise.all(promises)
-	} catch(error){
-		throw error
+	await Promise.all(promises)
+	if (isError){
+		throw errorMsg
 	}
 
 
